@@ -1,0 +1,1233 @@
+# ===============================================================================
+# SENTINEL CHAIN DRIVE - COMPREHENSIVE IMPLEMENTATION BUILD ORDER
+# ===============================================================================
+# Target Platform : AI-Agent Authorization and Cross-Bank Fraud Intelligence
+# Output Target   : build_order.txt
+# Document Type   : Implementation-Ready Engineering Specification
+# Specification Ver: 1.0.0
+# Date Created    : 2026-10-16
+# ===============================================================================
+
+# -------------------------------------------------------------------------------
+# TABLE OF CONTENTS
+# -------------------------------------------------------------------------------
+# 1. Project Purpose, Problem Understanding, and Architectural Scope
+# 2. Architectural Boundaries and Core System Modules
+# 3. Confirmed Technology Stack and Runtime Compatibility Decisions
+# 4. Cross-Cutting Engineering Requirements
+#    4.1 Security by Design and Least Privilege
+#    4.2 Privacy Engineering and Data Minimization
+#    4.3 Reliability, Consistency, and Failure Handling
+#    4.4 Code Quality, Type Safety, and Testing Standards
+# 5. Development Phases and Detailed Specifications
+#    - PHASE 1 : Foundation and Development Environment (Verified Baseline)
+#    - PHASE 2 : Simulated Banking Environment and Transaction Domain
+#    - PHASE 3 : AgentID - AI-Agent Identity and Capability Authorization
+#    - PHASE 4 : Deterministic Policy Engine
+#    - PHASE 5 : MuleChain - Graph-Based Fraud Intelligence
+#    - PHASE 6 : Privacy Gateway and Cross-Institution Intelligence
+#    - PHASE 7 : DRUNIX Ledger Integration
+#    - PHASE 8 : Event Processing and System Coordination
+#    - PHASE 9 : Investigation, Case Management, and Recovery Orchestration
+#    - PHASE 10: Frontend Dashboard and Operator Experience
+#    - PHASE 11: Security Hardening and Adversarial Validation
+#    - PHASE 12: Controlled Pilot Readiness
+#    - PHASE 13: Production Deployment and Multi-Institution Scale
+# 6. Open Design Decisions and Unverified External Dependencies
+# 7. Deployment Progression Model (Local -> Pilot -> Production)
+# 8. Master Phase Dependencies and Phase-Gate Verification Matrix
+# -------------------------------------------------------------------------------
+
+
+# ===============================================================================
+# 1. PROJECT PURPOSE, PROBLEM UNDERSTANDING, AND ARCHITECTURAL SCOPE
+# ===============================================================================
+
+Sentinel Chain Drive is an enterprise security and fraud intelligence platform
+designed to address two systemic risks emerging in digital banking:
+
+1. Unauthorized Autonomous AI-Agent Financial Actions:
+   As financial institutions integrate autonomous and semi-autonomous AI agents
+   capable of initiating payments, transfers, and account operations, agents may
+   exceed authorized parameters, suffer prompt-injection or tool misuse, or
+   operate under excessive standing permissions.
+   Sentinel Chain Drive introduces "AgentID" and a deterministic "Policy Engine"
+   to bind every AI agent to a cryptographically verifiable identity, explicit
+   capability envelope, authorized beneficiary whitelist, spending limits,
+   and deterministic runtime authorization checks.
+
+2. Fragmented Cross-Institution Fund-Flow Visibility (Money Mule Networks):
+   Modern financial crime leverages networks of mule accounts distributed across
+   multiple independent banks to rapidly disperse illicit funds before detection.
+   Because banks maintain siloed transaction records, coordinated pass-through,
+   fan-out, and circular fund movements remain invisible to any single institution.
+   Sentinel Chain Drive introduces "MuleChain" and an institution-aware
+   "Privacy Gateway" to analyze cross-bank transaction topologies and exchange
+   actionable fraud indicators without exposing raw customer accounts, personal
+   data, or commercial secrets.
+
+Architectural Scope Boundaries:
+- Local Real-Time Authorization vs. Asynchronous Fraud Analysis:
+  A bank's local transaction authorization decision (evaluating AgentID capabilities
+  and instantaneous local limits) MUST remain on the synchronous path.
+  Cross-bank graph analysis, pattern detection, and shared intelligence exchange
+  MUST execute asynchronously via decoupled event pipelines to prevent ledger
+  or network latency from blocking real-time payments.
+- Authoritative Data Boundary:
+  PostgreSQL is the single authoritative operational datastore for permissions,
+  transactions, policies, cases, and audit history.
+- Ledger Integration Boundary:
+  DRUNIX is integrated strictly as an external append-only audit, attestation,
+  and shared state coordination platform through a dedicated swappable adapter.
+  Core authorization logic and fraud scoring MUST remain independent of DRUNIX.
+
+
+# ===============================================================================
+# 2. ARCHITECTURAL BOUNDARIES AND CORE SYSTEM MODULES
+# ===============================================================================
+
+The application is decomposed into eleven modular subsystems with explicit
+boundaries:
+
+1. AgentID:
+   AI-agent identity registration, cryptographic key lifecycle, capability-based
+   authorization envelopes, limit tracking, and credential verification.
+
+2. Policy Engine:
+   Stateless, deterministic rule evaluation engine producing four explicit
+   outcomes: ALLOW, STEP_UP, HOLD, or DECLINE, with reproducible decision traces.
+
+3. MuleChain:
+   Directed graph-based transaction intelligence engine detecting structural
+   anomalies (fan-in, fan-out, rapid pass-through, and circular flows) across
+   participating institutions.
+
+4. Privacy Gateway:
+   Cryptographic pseudonymization service utilizing keyed HMAC constructions to
+   correlate cross-bank entity relationships without disclosing plain identifiers.
+
+5. DRUNIX Integration:
+   Pluggable ledger adapter abstracting shared intelligence publication, state
+   commitments, and attestation verification behind a strict interface contract.
+
+6. Risk Intelligence:
+   Composite risk scoring engine synthesizing graph topology signals, anomaly
+   indicators, freshness bounds, and provenance tracking into explainable scores.
+
+7. Investigation and Case Management:
+   Analyst workspace supporting alert triage, incident case compilation,
+   evidence packaging, audit history, and simulated recovery workflows.
+
+8. Bank Integration Gateway:
+   Inbound transaction submission endpoints, core banking simulation fixtures,
+   and webhooks representing institution boundary points.
+
+9. Event Processing:
+   Asynchronous messaging substrate utilizing the Transactional Outbox pattern,
+   idempotent consumers, dead-letter queues, and event replay protection.
+
+10. Web Dashboard:
+    Role-aware single-page application providing operational monitoring, policy
+    administration, alert investigation, and graph visualization.
+
+11. Security and Operations:
+    Role-based and attribute-based access control, automated secret management,
+    system observability, hardened headers, rate limiting, and container hygiene.
+
+
+# ===============================================================================
+# 3. CONFIRMED TECHNOLOGY STACK AND RUNTIME COMPATIBILITY DECISIONS
+# ===============================================================================
+
+The technology stack is pinned and validated for compatibility:
+
+Backend Core:
+- Python: Version >= 3.13 (Targeting 3.13 / 3.14).
+- Web Framework: FastAPI (>= 0.115.0) on Starlette (>= 1.8.0).
+- Data Validation & Settings: Pydantic v2 (>= 2.10.0) & Pydantic Settings (>= 2.7.0).
+- ORM & Persistence: SQLAlchemy 2.x (>= 2.0.36) with Greenlet (>= 3.1.0).
+- Asynchronous Driver: asyncpg (>= 0.30.0) for operational FastAPI queries.
+- Synchronous Driver: psycopg[binary] (>= 3.2.0) for Alembic schema migrations.
+- Database Migrations: Alembic (>= 1.14.0).
+- Dependency Management: pip-tools (pinned requirements.txt and requirements-dev.txt)
+  with future migration to uv for unified lockfile management.
+- Static Checking & Quality: Ruff (>= 0.8.0) for linting and formatting;
+  Mypy (>= 1.13.0) with strict mode enabled.
+- Test Suite: pytest (>= 8.3.0), pytest-asyncio (>= 0.24.0), httpx (>= 0.28.0),
+  and aiosqlite (>= 0.20.0) for zero-dependency in-memory execution.
+
+Data & Event Infrastructure:
+- Operational Datastore: PostgreSQL 16 (authoritative).
+- Graph Analysis Library: NetworkX (>= 3.2) for topological graph analytics.
+- Event Broker: RabbitMQ (>= 3.12) via aio-pika for asynchronous messaging.
+- Secondary Caching: Redis may only be introduced if documented high-throughput
+  ephemeral caching requirements demand it; it must never be authoritative.
+
+Cryptography & Identity:
+- Cryptographic Library: PyCA cryptography (>= 43.0.0).
+- Signing Algorithms: Ed25519 for agent signatures; HMAC-SHA256 for pseudonyms.
+- External Identity: OpenID Connect (OIDC) / OAuth 2.0 (Keycloak for local dev).
+
+Frontend Stack (Phase 10):
+- Language & Runtime: TypeScript 5.x on Node.js 20+ LTS.
+- Build Tool: Vite.
+- UI Framework: React 18 / 19.
+- State & Data Fetching: TanStack Query (React Query v5).
+- Form Management: React Hook Form with Zod schema validation.
+- Graph Visualization: Cytoscape.js for interactive topology rendering.
+- Frontend Testing: Vitest, React Testing Library, and Playwright.
+
+
+# ===============================================================================
+# 4. CROSS-CUTTING ENGINEERING REQUIREMENTS
+# ===============================================================================
+
+Every feature across all phases MUST strictly adhere to these four pillars:
+
+4.1 Security by Design and Least Privilege:
+- Deny by Default: All API routes, policy rules, and data access points deny
+  access unless explicitly permitted by verified permissions.
+- Server-Side Enforcement: Client-supplied role, identity, or status headers are
+  treated as untrusted input. Authentication and capability checks are executed
+  exclusively on the backend.
+- Secret Hygiene: Passwords, private keys, and HMAC seeds are typed as
+  Pydantic `SecretStr` and NEVER emitted to logs, tracebacks, or API payloads.
+- Parameterized Queries: All database interactions use SQLAlchemy ORM or
+  parameterized core constructs to eliminate SQL injection vulnerabilities.
+- Defensive Transport: Outbound HTTP responses carry strict security headers
+  (nosniff, DENY, referrer policy, CSP). Wildcard CORS origins are forbidden.
+- Information Shielding: Internal stack traces, database schemas, and connection
+  strings are masked behind sanitized error codes and correlation IDs.
+
+4.2 Privacy Engineering and Data Minimization:
+- Storage Minimization: Only attributes necessary for transaction authorization
+  and fraud pattern recognition are stored or processed.
+- Controlled Disclosure: Institutions can only query their own transactions
+  and shared cross-bank risk indicators for which they have verified authorization.
+- Pseudonymization: Cross-bank account references are pseudonymized using keyed
+  HMAC functions. Plain account hashes without secret keys are prohibited.
+- Synthetic Test Isolation: Development and automated tests must exclusively
+  use synthetic banking data. Real customer PII must never enter the codebase.
+
+4.3 Reliability, Consistency, and Failure Handling:
+- Idempotency: All payment submissions, authorization checks, and event
+  consumers enforce idempotency keys to prevent duplicate side effects.
+- Transactional Consistency: All persistent state transitions occur inside
+  ACID database transactions.
+- Transactional Outbox: Event publication to RabbitMQ is written to an outbox
+  table within the same database transaction as business state changes.
+- Bounded Retries: External network calls (including DRUNIX and banking gateways)
+  use exponential backoff with jitter and explicit timeouts.
+- Fail-Safe Authorization: If risk intelligence or external ledgers are offline,
+  the system MUST fail safe according to deterministic policy rules rather than
+  assuming a benign default.
+
+4.4 Code Quality, Type Safety, and Testing Standards:
+- Complete Type Annotations: All Python functions, methods, and schemas must have
+  explicit type signatures compliant with strict Mypy.
+- Layer Separation: Zero direct database or SQL operations inside API route
+  handlers; all access flows: API -> Service -> Repository -> Database.
+- Test Pyramid: Every phase must deliver isolated unit tests, integration tests
+  with real/mock databases, and adversarial negative tests.
+- Reproducible Migrations: Schema updates must include forward (`upgrade`) and
+  reversal (`downgrade`) scripts tested against PostgreSQL.
+
+
+# ===============================================================================
+# 5. DEVELOPMENT PHASES AND DETAILED SPECIFICATIONS
+# ===============================================================================
+
+# -------------------------------------------------------------------------------
+# PHASE 1: FOUNDATION AND DEVELOPMENT ENVIRONMENT
+# -------------------------------------------------------------------------------
+Status: COMPLETED AND VERIFIED
+
+1.1 Objective and Scope:
+Establish the secure software foundation, directory layout, dependency
+management, database session lifecycle, migration workflow, structured logging,
+correlation tracking, health probes, and automated test harness.
+
+1.2 Verified Repository Artifacts:
+- Structure: Modular architecture under `src/sentinel_chain_drive/` separating
+  `core/`, `db/`, `schemas/`, `repositories/`, `services/`, `integrations/`,
+  and `api/`.
+- Configuration: Pydantic v2 `Settings` with `SecretStr` masking for
+  `POSTGRES_PASSWORD`, strict CORS origin validation (no wildcards), and safe
+  metadata projection.
+- Logging & Observability: JSON structured logging with `contextvars` correlation
+  ID binding (`X-Correlation-ID`) and automated regex-based redaction of secrets,
+  tokens, passwords, and private keys.
+- Middleware: Correlation ID propagation, `SecurityHeadersMiddleware`, and
+  `RequestSizeLimitMiddleware` rejecting payloads > 1 MB with HTTP 413.
+- Database: SQLAlchemy 2.x async engine (`asyncpg`), connection pooling,
+  pre-ping liveliness checks, and transaction context managers (`get_db_session`).
+- Migrations: Alembic configured with async support and baseline migration
+  `20261016_0001_initial_audit_log_schema.py` creating the `audit_logs` table.
+- Health Probes: `GET /health/live` (process alive) and `GET /health/ready`
+  (active `SELECT 1` database probe returning HTTP 200 or HTTP 503).
+- System Info: `GET /api/v1/system/info` returning non-sensitive application
+  metadata and version identifiers.
+- DRUNIX Interface: Abstract `DRUNIXAdapter` and `MockDRUNIXAdapter` stub.
+- Containerization: Multi-stage non-root `Dockerfile` and `docker-compose.yml`
+  orchestrating PostgreSQL 16 with health checks.
+- Verification: 17/17 automated tests passing, Ruff linting/formatting clean,
+  Mypy strict checking clean (43 source files verified).
+
+1.3 Baseline Acceptance Criteria:
+- Clean application startup in containerized and local virtual environments.
+- 100% test pass rate with zero dependency on live external services.
+- Zero committed credentials or plaintext secrets.
+
+1.4 Handoff to Phase 2:
+The foundation provides the database session factory, base models, repository
+primitives, structured error handling, and test fixtures required to build the
+simulated banking and transaction domain.
+
+
+# -------------------------------------------------------------------------------
+# PHASE 2: SIMULATED BANKING ENVIRONMENT AND TRANSACTION DOMAIN
+# -------------------------------------------------------------------------------
+Objective:
+Construct a multi-institution simulated banking domain providing deterministic,
+testable entities (institutions, accounts, and financial transactions) before
+introducing agent authorization or fraud graph detection.
+
+2.1 Feature Breakdown:
+
+Feature 2.1: Institution Management
+- Actor: System Administrator / Internal Bank Operator.
+- Purpose: Model independent participating financial institutions.
+- Preconditions: System initialized; operator authenticated.
+- Inputs & Validation:
+  - `institution_code`: String, 3-12 alphanumeric characters, unique (e.g., "BANK_ALPHA").
+  - `name`: String, 2-100 characters.
+  - `routing_identifier`: String, valid routing/BIC code format.
+  - `status`: Enum ("ACTIVE", "SUSPENDED", "INACTIVE").
+  - `config`: Optional JSON dictionary of institution-specific limits.
+- State Changes: New `institutions` record created; status changes recorded to `audit_logs`.
+- Data Model (`src/sentinel_chain_drive/db/models/institution.py`):
+  - `id`: UUID (Primary Key).
+  - `institution_code`: String(16), Unique, Indexed.
+  - `name`: String(128), Not Null.
+  - `routing_identifier`: String(32), Unique, Not Null.
+  - `status`: String(16), Not Null, Default "ACTIVE".
+  - `settings`: JSON, Nullable.
+  - Standard `TimestampMixin`.
+- API Endpoints:
+  - `POST /api/v1/institutions`: Register a new institution.
+  - `GET /api/v1/institutions`: List active institutions.
+  - `GET /api/v1/institutions/{institution_id}`: Retrieve institution details.
+  - `PATCH /api/v1/institutions/{institution_id}/status`: Update status.
+- Security Controls: Cross-institution data boundary enforcement; read access
+  restricted by tenant.
+
+Feature 2.2: Simulated Account Management
+- Actor: Simulated Core Banking System / Bank Admin.
+- Purpose: Provide synthetic customer and business accounts owned by institutions.
+- Preconditions: Owning institution must exist and be in "ACTIVE" status.
+- Inputs & Validation:
+  - `account_number`: String, synthetic account format (e.g., "ACCT-10002938").
+  - `institution_id`: UUID, foreign key referencing `institutions.id`.
+  - `account_type`: Enum ("CHECKING", "SAVINGS", "COMMERCIAL", "SETTLEMENT").
+  - `currency`: String, ISO 4217 code (3 letters, e.g., "USD", "EUR", "GBP").
+  - `balance`: Decimal, exact numeric representation (Scale 4), Non-negative.
+  - `status`: Enum ("ACTIVE", "FROZEN", "RESTRICTED", "CLOSED").
+  - `risk_flags`: List of strings (e.g., ["NEW_ACCOUNT", "HIGH_VELOCITY"]).
+- Data Model (`src/sentinel_chain_drive/db/models/account.py`):
+  - `id`: UUID (Primary Key).
+  - `institution_id`: UUID, ForeignKey("institutions.id"), Indexed.
+  - `account_number`: String(64), Unique, Indexed.
+  - `account_type`: String(32), Not Null.
+  - `currency`: String(3), Not Null.
+  - `balance`: Numeric(18, 4), Not Null, Default 0.0000.
+  - `status`: String(16), Not Null, Default "ACTIVE".
+  - `risk_flags`: JSON, Default [].
+  - Standard `TimestampMixin`.
+- Business Rules:
+  - Float types strictly prohibited; monetary balance stored as `Numeric(18, 4)`
+    and serialized using Python `Decimal`.
+  - An institution cannot view, update, or modify accounts belonging to another
+    institution.
+
+Feature 2.3: Transaction Lifecycle and Domain Model
+- Actor: Bank Gateway / Autonomous Agent via Gateway.
+- Purpose: Model financial transfer requests and their progressive state transitions.
+- Preconditions: Origin and destination accounts exist.
+- Transaction States:
+  - "SUBMITTED": Initial receipt by gateway.
+  - "PENDING_AUTHORIZATION": Awaiting AgentID / Policy Engine evaluation.
+  - "AUTHORIZED": Passed capability and policy evaluation.
+  - "HELD": Flagged for analyst investigation or step-up verification.
+  - "SETTLED": Transaction finalized by simulated core banking system.
+  - "DECLINED": Rejected by policy, risk, or capability violation.
+  - "CANCELLED": Aborted before settlement.
+- Inputs & Validation:
+  - `idempotency_key`: String, 16-128 characters, unique per submission.
+  - `origin_institution_id`: UUID, Not Null.
+  - `origin_account_id`: UUID, Not Null.
+  - `destination_institution_id`: UUID, Not Null.
+  - `destination_account_id`: UUID, Not Null.
+  - `amount`: Decimal, > 0.0001, Scale 4.
+  - `currency`: String(3), Matching origin account currency.
+  - `purpose_code`: String(32), e.g., "SUPPLIER_PAYMENT", "PAYROLL".
+  - `agent_id`: Optional UUID (populated if initiated by an AI agent).
+- Data Model (`src/sentinel_chain_drive/db/models/transaction.py`):
+  - `id`: UUID (Primary Key).
+  - `idempotency_key`: String(128), Unique, Indexed.
+  - `origin_institution_id`: UUID, ForeignKey("institutions.id"), Indexed.
+  - `origin_account_id`: UUID, ForeignKey("accounts.id"), Indexed.
+  - `destination_institution_id`: UUID, ForeignKey("institutions.id"), Indexed.
+  - `destination_account_id`: UUID, ForeignKey("accounts.id"), Indexed.
+  - `amount`: Numeric(18, 4), Not Null.
+  - `currency`: String(3), Not Null.
+  - `status`: String(32), Not Null, Default "SUBMITTED", Indexed.
+  - `purpose_code`: String(32), Not Null.
+  - `agent_id`: UUID, Nullable, Indexed.
+  - `rejection_reason`: String(256), Nullable.
+  - `correlation_id`: String(64), Indexed.
+  - `settled_at`: DateTime(timezone=True), Nullable.
+  - Standard `TimestampMixin`.
+- Endpoints:
+  - `POST /api/v1/transactions`: Submit a synthetic transaction.
+  - `GET /api/v1/transactions/{transaction_id}`: Retrieve transaction details.
+  - `GET /api/v1/institutions/{institution_id}/transactions`: List institution transactions.
+
+Feature 2.4: Deterministic Seeding and Bank Scenario Fixtures
+- Purpose: Provide reproducible test fixtures with realistic multi-bank accounts,
+  benign transactions, and synthetic fraud scenarios (mule ring structures).
+- Script: `src/sentinel_chain_drive/db/seed.py`.
+
+2.2 Dependencies:
+- Requires Phase 1 database engine, session management, and Base models.
+
+2.3 Required Tests:
+- Unit tests: Decimal precision arithmetic, currency validation, state machine transitions.
+- Integration tests: Multi-institution account creation, duplicate idempotency rejection,
+  unauthorized cross-institution access rejection.
+- Fixture validation: Seeding script execution and database integrity verification.
+
+2.4 Exit Gate & Acceptance Criteria:
+- Alembic migration `0002_banking_and_transaction_domain.py` applied cleanly.
+- Multiple institutions and accounts can exchange synthetic transactions.
+- Duplicate transaction submissions with identical idempotency keys return identical results
+  without creating multiple database records.
+- All unit and integration tests pass with 100% assertions satisfied.
+
+
+# -------------------------------------------------------------------------------
+# PHASE 3: AGENTID - AI-AGENT IDENTITY AND CAPABILITY AUTHORIZATION
+# -------------------------------------------------------------------------------
+Objective:
+Establish cryptographically verifiable identities and explicit capability-based
+authorization boundaries for autonomous AI agents initiating financial actions.
+
+3.1 Feature Breakdown:
+
+Feature 3.1: Agent Registration and Identity Management
+- Actor: Institutional Security Administrator.
+- Purpose: Register and manage the lifecycle of an AI agent authorized to act.
+- Inputs & Validation:
+  - `name`: String, 3-64 characters.
+  - `sponsoring_institution_id`: UUID, ForeignKey("institutions.id").
+  - `owner_contact`: String, valid email/system identifier.
+  - `status`: Enum ("PENDING_APPROVAL", "ACTIVE", "SUSPENDED", "REVOKED", "EXPIRED").
+  - `public_key`: String, PEM-encoded Ed25519 public key.
+- Data Model (`src/sentinel_chain_drive/db/models/agent.py`):
+  - `id`: UUID (Primary Key).
+  - `sponsoring_institution_id`: UUID, ForeignKey("institutions.id"), Indexed.
+  - `name`: String(64), Not Null.
+  - `owner_contact`: String(128), Not Null.
+  - `public_key`: Text, Not Null.
+  - `key_algorithm`: String(16), Default "Ed25519".
+  - `key_version`: Integer, Default 1.
+  - `status`: String(24), Not Null, Default "PENDING_APPROVAL", Indexed.
+  - `activated_at`: DateTime(timezone=True), Nullable.
+  - `revoked_at`: DateTime(timezone=True), Nullable.
+  - Standard `TimestampMixin`.
+
+Feature 3.2: Cryptographic Capability Credentials
+- Actor: Autonomous AI Agent / Authorizing Service.
+- Purpose: Cryptographically sign proposed transaction intents using agent private keys.
+- Credential Model:
+  - Claims: `agent_id`, `nonce`, `timestamp`, `expires_at`, `action_type`,
+    `transaction_hash` (SHA-256 over amount, currency, origin, destination).
+  - Signature: Ed25519 signature over canonical JSON representation of claims.
+- Cryptographic Engine (`src/sentinel_chain_drive/core/crypto.py`):
+  - Signature verification using PyCA `cryptography.hazmat.primitives.asymmetric.ed25519`.
+  - Nonce cache & replay protection: Reject any request with a timestamp older than
+    300 seconds or a nonce already processed within the validity window.
+  - Key rotation support: Query active public key by `agent_id` and `key_version`.
+
+Feature 3.3: Capability-Based Authorization Envelopes
+- Actor: Security Administrator / Policy Designer.
+- Purpose: Define strict operational envelopes restricting agent capabilities.
+- Data Model (`src/sentinel_chain_drive/db/models/capability.py`):
+  - `id`: UUID (Primary Key).
+  - `agent_id`: UUID, ForeignKey("agents.id"), Indexed.
+  - `max_single_transaction_amount`: Numeric(18, 4), Not Null.
+  - `max_daily_cumulative_amount`: Numeric(18, 4), Not Null.
+  - `allowed_currencies`: JSON (List[str], e.g., ["USD"]).
+  - `allowed_purpose_codes`: JSON (List[str], e.g., ["VENDOR_PAYMENT"]).
+  - `allowed_destination_accounts`: JSON (Optional whitelist of approved account IDs).
+  - `operating_window_start_utc`: Time, Nullable.
+  - `operating_window_end_utc`: Time, Nullable.
+  - `is_active`: Boolean, Default True.
+  - Standard `TimestampMixin`.
+
+Feature 3.4: Agent Action Authorization Service
+- Actor: Transaction Ingestion Gateway.
+- Purpose: Synchronously verify agent credential, signature, and capability match.
+- Service: `AgentAuthorizationService` (`src/sentinel_chain_drive/services/agent_service.py`).
+- Evaluation Steps:
+  1. Retrieve agent by `agent_id`. Verify status == "ACTIVE".
+  2. Verify Ed25519 signature against registered agent `public_key`.
+  3. Verify nonce uniqueness and check timestamp skew (|now - ts| <= 300s).
+  4. Fetch active capability envelope.
+  5. Check `transaction.amount <= max_single_transaction_amount`.
+  6. Calculate cumulative spending in the current 24-hour window:
+     Query sum of settled/authorized transactions for agent within past 24h.
+     Verify `(cumulative + current_amount) <= max_daily_cumulative_amount`.
+  7. Verify `currency` in `allowed_currencies`.
+  8. Verify `purpose_code` in `allowed_purpose_codes`.
+  9. If destination whitelist is configured, verify destination account is present.
+  10. Record immutable `authorization_records` entry with decision, reason, and signature hash.
+- Output: `AuthorizationResult(is_authorized=bool, reason_code=str, details=dict)`.
+
+3.2 Dependencies:
+- Requires Phase 1 core security and Phase 2 banking models (`accounts`, `transactions`).
+
+3.3 Required Tests:
+- Cryptographic verification tests: Valid signature accepted, tampered payload rejected,
+  mismatched public key rejected.
+- Replay tests: Duplicate nonce within time window rejected.
+- Clock skew tests: Timestamp older than 300s rejected.
+- Capability tests: Exceeded single limit rejected, cumulative daily limit breach rejected,
+  disallowed currency rejected, out-of-window transaction rejected.
+- Inactive/Revoked agent tests: Revoked agent cannot authorize any action.
+
+3.4 Exit Gate & Acceptance Criteria:
+- No transaction can be authorized under an agent identity without a cryptographically
+  valid signature.
+- An agent cannot execute an action exceeding its assigned single or daily capability limits.
+- Full negative test coverage for tampering, replay, and expiration.
+
+
+# -------------------------------------------------------------------------------
+# PHASE 4: DETERMINISTIC POLICY ENGINE
+# -------------------------------------------------------------------------------
+Objective:
+Implement a deterministic, explainable rule evaluation engine combining agent
+capabilities, transaction context, account status, and institution rules into
+authoritative ALLOW, STEP_UP, HOLD, or DECLINE decisions.
+
+4.1 Feature Breakdown:
+
+Feature 4.1: Policy Specification and Rule Model
+- Purpose: Provide modular, versioned policy rules evaluated without side effects.
+- Decision Outcomes:
+  - `ALLOW`: Request meets all criteria; transaction may proceed to settlement.
+  - `STEP_UP`: Human supervisor or multi-party approval required before execution.
+  - `HOLD`: Potential risk detected; transaction placed in institutional review queue.
+  - `DECLINE`: Request violates hard security, limit, or regulatory boundaries.
+- Data Model (`src/sentinel_chain_drive/db/models/policy.py`):
+  - `id`: UUID (Primary Key).
+  - `institution_id`: UUID, ForeignKey("institutions.id"), Nullable (Null = Global).
+  - `policy_code`: String(64), Indexed.
+  - `version`: Integer, Not Null.
+  - `priority`: Integer, Not Null (Lower number = higher precedence).
+  - `rules`: JSON (DSL representing conditional predicates).
+  - `is_active`: Boolean, Default True.
+  - Standard `TimestampMixin`.
+
+Feature 4.2: Policy Evaluation Engine
+- Component: `PolicyEngine` (`src/sentinel_chain_drive/services/policy_engine.py`).
+- Inputs:
+  - Transaction context (amount, currency, origin, destination, purpose).
+  - AgentID authorization result (from Phase 3).
+  - Account flags and status (from Phase 2).
+  - Historical velocity (transactions count, aggregate amount in time window).
+  - Available risk indicators (from Phase 5/6, if present).
+- Precedence & Conflict Resolution:
+  1. Security Violations: If AgentID signature fails or agent revoked -> Immediate DECLINE.
+  2. Account Restrictions: If origin/dest account FROZEN -> Immediate DECLINE.
+  3. Hard Limits: If transaction exceeds absolute institutional cap -> Immediate DECLINE.
+  4. Step-Up Triggers: If transaction amount exceeds threshold requiring dual control,
+     or risk score in medium band -> Return STEP_UP.
+  5. Hold Triggers: If suspicious rapid velocity detected -> Return HOLD.
+  6. Default Rule: If all checks pass -> Return ALLOW.
+  7. Fail-Safe Boundary: If policy evaluation errors or unexpected exceptions occur,
+     engine MUST default to DECLINE/HOLD, never ALLOW.
+- Decision Trace:
+  Returns `PolicyDecision`:
+  - `decision`: Enum ("ALLOW", "STEP_UP", "HOLD", "DECLINE").
+  - `reason_codes`: List[str] (e.g., ["AGENT_AUTH_OK", "DUAL_APPROVAL_REQUIRED"]).
+  - `policy_id`: UUID.
+  - `policy_version`: Integer.
+  - `evaluated_at`: DateTime(UTC).
+  - `correlation_id`: String.
+
+Feature 4.3: Step-Up and Approval Workflow
+- Actor: Institutional Compliance Supervisor.
+- Purpose: Manage the lifecycle of transactions requiring step-up approval.
+- Data Model (`src/sentinel_chain_drive/db/models/approval_request.py`):
+  - `id`: UUID (Primary Key).
+  - `transaction_id`: UUID, ForeignKey("transactions.id"), Indexed.
+  - `status`: Enum ("PENDING", "APPROVED", "REJECTED", "EXPIRED").
+  - `required_role`: String(32), Default "SUPERVISOR".
+  - `approver_id`: String(128), Nullable.
+  - `decision_reason`: String(500), Nullable.
+  - `expires_at`: DateTime(timezone=True), Not Null.
+  - Standard `TimestampMixin`.
+- Business Rules:
+  - Approver cannot be the same entity/agent that initiated the transaction.
+  - Expired approvals transition to "EXPIRED" and cause transaction DECLINE.
+
+4.2 Dependencies:
+- Requires Phase 2 transaction domain and Phase 3 AgentID capabilities.
+
+4.3 Required Tests:
+- Determinism tests: Identical inputs produce identical decision outputs and reason codes.
+- Precedence tests: A security violation (e.g., revoked agent) always overrides an allow rule.
+- Concurrency limit tests: Concurrent transactions competing for remaining daily limit
+  are serialized through atomic database row locks (`SELECT ... FOR UPDATE`).
+- Approval tests: Separation of duties enforced; expired step-up requests fail closed.
+
+4.4 Exit Gate & Acceptance Criteria:
+- All four decision outcomes (ALLOW, STEP_UP, HOLD, DECLINE) verified.
+- Missing authorization evidence cannot result in an ALLOW decision.
+- Every decision produces an immutable audit record referencing the exact policy version.
+
+
+# -------------------------------------------------------------------------------
+# PHASE 5: MULECHAIN - GRAPH-BASED FRAUD INTELLIGENCE
+# -------------------------------------------------------------------------------
+Objective:
+Construct a directed transaction graph engine detecting money mule behavioral
+patterns across participating institutions without blocking the real-time payment path.
+
+5.1 Feature Breakdown:
+
+Feature 5.1: Graph Model and Construction
+- Engine: NetworkX directed multigraph (`MultiDiGraph`).
+- Node Schema:
+  - `AccountNode`: `account_id`, `institution_id`, `account_type`, `created_at`.
+  - `InstitutionNode`: `institution_id`, `institution_code`.
+- Edge Schema:
+  - `TransactionEdge`: `transaction_id`, `amount`, `currency`, `timestamp`,
+    `purpose_code`, `status`.
+- Time-Window Bounded Subgraphs:
+  Support sliding inspection windows (e.g., past 1 hour, 24 hours, 7 days, 30 days)
+  to prevent unbounded memory consumption.
+
+Feature 5.2: Topological Fraud Detection Rules
+Module: `src/sentinel_chain_drive/services/mulechain/detectors.py`.
+- Rule 1: Fan-In Detection (Smurfing Ingress)
+  - Pattern: Multiple distinct source accounts (>= N, default 5) transferring funds
+    to a common destination account within time window W (default 24h), where
+    individual amounts are below reporting thresholds.
+  - Output: `FanInIndicator(dest_account_id, source_count, aggregate_amount, time_window)`.
+- Rule 2: Fan-Out Detection (Rapid Dispersal)
+  - Pattern: A single source account distributing funds to multiple distinct destination
+    accounts (>= N, default 5) across different institutions within window W.
+  - Output: `FanOutIndicator(source_account_id, dest_count, aggregate_amount, time_window)`.
+- Rule 3: Rapid Pass-Through Detection (Transit Mule)
+  - Pattern: Account A receives funds from Account S, and within delta T (default <= 30 mins),
+    Account A transfers >= 85% of received funds to Account D.
+  - Output: `PassThroughIndicator(mule_account_id, ingress_tx, egress_tx, retention_ratio)`.
+- Rule 4: Circular Fund-Flow Detection (Layering)
+  - Pattern: Directed cycles in transaction graph (A -> B -> C -> A) within window W.
+  - Output: `CircularFlowIndicator(cycle_path, total_cycled_amount)`.
+
+Feature 5.3: Explainable Risk Scoring Engine
+- Component: `RiskScoringService` (`src/sentinel_chain_drive/services/mulechain/scoring.py`).
+- Score Range: 0 to 100 (Integer):
+  - 0-29: LOW_RISK.
+  - 30-59: MEDIUM_RISK.
+  - 60-84: HIGH_RISK.
+  - 85-100: CRITICAL_RISK.
+- Scoring Formulation:
+  - Deterministic weighted combination of active indicators + velocity modifiers.
+  - Evidence preservation: Every computed score links directly to the underlying
+    indicators, triggering transaction IDs, and rule versions.
+
+Feature 5.4: Asynchronous Processing and Alert Generation
+- Service: `MuleChainProcessor`.
+- Data Model (`src/sentinel_chain_drive/db/models/alert.py`):
+  - `id`: UUID (Primary Key).
+  - `alert_code`: String(64), Indexed (e.g., "MULE_RAPID_PASSTHROUGH").
+  - `severity`: Enum ("LOW", "MEDIUM", "HIGH", "CRITICAL").
+  - `status`: Enum ("NEW", "INVESTIGATING", "RESOLVED", "FALSE_POSITIVE").
+  - `primary_account_id`: UUID, ForeignKey("accounts.id"), Indexed.
+  - `primary_institution_id`: UUID, ForeignKey("institutions.id"), Indexed.
+  - `risk_score`: Integer, Not Null.
+  - `evidence_data`: JSON (Structured indicator parameters and transaction IDs).
+  - `detection_rule_version`: String(16), Not Null.
+  - Standard `TimestampMixin`.
+
+5.2 Dependencies:
+- Requires Phase 2 transaction domain. Operates asynchronously from Phase 4 authorization.
+
+5.3 Required Tests:
+- Synthetic pattern tests: Ingestion of synthetic fan-in, fan-out, pass-through, and circular
+  transaction sets reliably triggers corresponding indicators.
+- Negative tests: Normal benign transaction traffic does not trigger high-risk alerts.
+- Bounded memory tests: Graph queries on large synthetic datasets respect time-window limits.
+
+5.4 Exit Gate & Acceptance Criteria:
+- Detectors reliably identify synthetic mule ring scenarios with reproducible evidence.
+- Detection executes asynchronously without adding latency to the synchronous transaction path.
+- All risk scores include verifiable evidence and detection rule provenance.
+
+
+# -------------------------------------------------------------------------------
+# PHASE 6: PRIVACY GATEWAY AND CROSS-INSTITUTION INTELLIGENCE
+# -------------------------------------------------------------------------------
+Objective:
+Enable financial institutions to share and correlate suspicious account and
+flow patterns without disclosing raw customer identifiers or account numbers.
+
+6.1 Feature Breakdown:
+
+Feature 6.1: Keyed HMAC Pseudonymization Engine
+- Module: `src/sentinel_chain_drive/core/privacy.py`.
+- Pseudonym Construction:
+  `MeshID = HMAC-SHA256(SecretKey_Epoch, InstitutionCode || ":" || AccountNumber)`
+- Cryptographic Rules:
+  - Unkeyed hashes (e.g., raw SHA-256) are strictly forbidden to prevent dictionary
+    and rainbow-table attacks against predictable account number formats.
+  - `SecretKey_Epoch` managed within approved key management configuration with
+    versioning and scheduled rotation.
+  - Canonical string representation enforced before hashing (normalized whitespace,
+    uppercase institution code, UTF-8 encoded).
+
+Feature 6.2: Shared Intelligence Exchange Model
+- Data Model (`src/sentinel_chain_drive/db/models/shared_indicator.py`):
+  - `id`: UUID (Primary Key).
+  - `indicator_type`: String(64), Indexed (e.g., "MULE_BURST_INGRESS").
+  - `pseudonymous_mesh_id`: String(64), Indexed (HMAC-SHA256 digest).
+  - `originating_institution_id`: UUID, ForeignKey("institutions.id"), Indexed.
+  - `severity`: String(16), Not Null.
+  - `confidence_score`: Float (0.0 to 1.0).
+  - `evidence_summary`: JSON (Non-sensitive topological attributes).
+  - `expires_at`: DateTime(timezone=True), Not Null.
+  - Standard `TimestampMixin`.
+
+Feature 6.3: Privacy Gateway Access Control & Tenant Isolation
+- Component: `PrivacyGatewayService`.
+- Authorization Rules:
+  - Institutions can publish indicators originating from their own accounts.
+  - Institutions can query indicators matching specific `MeshID` pseudonyms during
+    active payment authorization checks.
+  - Bulk enumeration or scraping of all shared pseudonyms is strictly denied.
+  - Rate limiting applied per institution to prevent oracle enumeration attacks.
+
+6.2 Dependencies:
+- Requires Phase 2 banking models and Phase 5 fraud detection output.
+
+6.3 Required Tests:
+- Pseudonymization tests: Identical inputs with same key produce identical pseudonyms;
+  different keys produce different pseudonyms.
+- Re-identification resistance: Raw account numbers cannot be derived from MeshID.
+- Access control tests: Institution B cannot view raw indicators of Institution A
+  without authorized shared cross-bank query scope.
+
+6.4 Exit Gate & Acceptance Criteria:
+- Cross-bank correlation functions reliably using HMAC pseudonyms.
+- Direct account numbers and PII are never published to the shared indicator registry.
+- Rate limiting and query constraints prevent pseudonym enumeration.
+
+
+# -------------------------------------------------------------------------------
+# PHASE 7: DRUNIX LEDGER INTEGRATION
+# -------------------------------------------------------------------------------
+Objective:
+Connect the platform to the permissioned DRUNIX ledger through a decoupled,
+swappable adapter interface for verifiable state attestation and audit proofs.
+
+7.1 Feature Breakdown:
+
+Feature 7.1: DRUNIX Capability Verification & Technical Assessment
+- Task: Prior to building network adapters, formally inspect the target DRUNIX node
+  specifications, SDKs, communication protocols (REST, gRPC, RPC), transaction
+  semantics, consensus model, and smart-contract support.
+- Output: `docs/drunix_integration_spec.md` documenting verified interfaces vs.
+  unsupported features.
+- Guardrails:
+  - Do NOT assume EVM or Solidity compatibility.
+  - Do NOT introduce Solidity unless verified DRUNIX requirements demand it.
+  - Core authorization and scoring logic MUST remain off-chain in the Python service.
+
+Feature 7.2: Replaceable DRUNIX Adapter Interface
+- Abstract Base Class: `DRUNIXAdapter` (`src/sentinel_chain_drive/integrations/drunix/adapter.py`).
+  Methods:
+  - `is_available() -> bool`: Liveness probe.
+  - `record_authorization_attestation(record_id: str, commitment_hash: str) -> str`:
+    Submit an authorization decision commitment hash to the ledger.
+  - `publish_shared_fraud_indicator(indicator_id: str, payload_hash: str) -> str`:
+    Submit a privacy-preserving fraud indicator reference to the ledger.
+  - `verify_attestation(tx_receipt: str, expected_hash: str) -> bool`:
+    Validate that an on-chain commitment matches expected state.
+
+Feature 7.3: Mock vs. Live Adapter Implementations
+- `MockDRUNIXAdapter` (Verified in Phase 1): In-memory simulation generating deterministic
+  receipts (`0x...`) for testing and local development.
+- `RpcDRUNIXAdapter` (Phase 7): Production adapter connecting to verified DRUNIX nodes
+  with mutual TLS, connection pooling, and retry logic.
+
+Feature 7.4: Reconciliation and Ledger Outage Resilience
+- Data Model (`src/sentinel_chain_drive/db/models/ledger_submission.py`):
+  - `id`: UUID (Primary Key).
+  - `submission_type`: String(32), Indexed ("AUTH_ATTESTATION", "FRAUD_INDICATOR").
+  - `entity_id`: UUID, Indexed.
+  - `commitment_hash`: String(64), Not Null.
+  - `status`: Enum ("PENDING", "SUBMITTED", "CONFIRMED", "FAILED").
+  - `tx_hash`: String(128), Nullable.
+  - `retry_count`: Integer, Default 0.
+  - `last_error`: Text, Nullable.
+  - Standard `TimestampMixin`.
+- Outage Behavior:
+  - If DRUNIX is unreachable, local transaction authorization decisions MUST continue
+    unimpeded; ledger submissions are queued in PostgreSQL for asynchronous retry.
+  - A ledger outage MUST NEVER cause an unauthorized transaction to be approved.
+
+7.2 Dependencies:
+- Requires Phase 1 adapter interface, Phase 3/4 authorization records, Phase 6 indicators.
+
+7.3 Required Tests:
+- Mock adapter verification: End-to-end attestation recording and verification.
+- Ledger outage tests: System queues submissions during simulated ledger disconnect;
+  drains queue upon restoration.
+- Integrity tests: Tampered commitment hashes fail verification.
+
+7.4 Exit Gate & Acceptance Criteria:
+- Core application operates seamlessly with both mock and live DRUNIX adapters.
+- Ledger downtime has zero impact on local synchronous payment authorization decisions.
+- All ledger data submissions consist strictly of minimized hashes and attestations.
+
+
+# -------------------------------------------------------------------------------
+# PHASE 8: EVENT PROCESSING AND SYSTEM COORDINATION
+# -------------------------------------------------------------------------------
+Objective:
+Orchestrate transaction submission, real-time authorization, asynchronous graph
+analysis, indicator exchange, and ledger submission using reliable messaging.
+
+8.1 Feature Breakdown:
+
+Feature 8.1: Transactional Outbox Pattern
+- Purpose: Guarantee at-least-once event publication without dual-write inconsistencies.
+- Data Model (`src/sentinel_chain_drive/db/models/outbox.py`):
+  - `id`: UUID (Primary Key).
+  - `event_type`: String(64), Indexed (e.g., "TRANSACTION_AUTHORIZED").
+  - `aggregate_type`: String(32), Indexed ("TRANSACTION", "AGENT", "ALERT").
+  - `aggregate_id`: UUID, Indexed.
+  - `payload`: JSON, Not Null.
+  - `correlation_id`: String(64), Indexed.
+  - `status`: Enum ("PENDING", "PUBLISHED", "FAILED").
+  - `retry_count`: Integer, Default 0.
+  - Standard `TimestampMixin`.
+- Outbox Relayer: Background worker that polls pending outbox entries, publishes
+  to RabbitMQ, and marks them `PUBLISHED` upon broker acknowledgment.
+
+Feature 8.2: RabbitMQ Topology and Event Schemas
+- Exchange Architecture:
+  - `sentinel.events` (Topic Exchange).
+  - Routing Keys: `transaction.submitted`, `transaction.authorized`, `transaction.held`,
+    `mulechain.alert_raised`, `privacy.indicator_shared`.
+- Queue Architecture:
+  - `q.mulechain.transactions` (Consumes transaction events for graph analytics).
+  - `q.drunix.submissions` (Consumes commitments for ledger recording).
+  - `q.investigations.alerts` (Consumes alerts for case triage).
+- Dead-Letter Handling:
+  - Every queue configured with `x-dead-letter-exchange: sentinel.dlx`.
+  - Max retry count: 5 with exponential backoff before routing to dead-letter queue.
+
+Feature 8.3: Idempotent Event Consumers
+- Consumer Contract:
+  - Every message carries a unique `event_id` and `correlation_id`.
+  - Consumer tracks processed IDs in `processed_events` table within local transaction.
+  - Duplicate messages are acknowledged and discarded without re-execution.
+
+8.2 Dependencies:
+- Requires Phases 2, 3, 4, 5, 6, and 7. Introduces RabbitMQ broker.
+
+8.3 Required Tests:
+- Outbox consistency: Database rollback rolls back the outbox event.
+- Idempotency tests: Replaying identical event payloads produces no duplicate state changes.
+- Dead-letter tests: Poison messages reaching max retry count move cleanly to DLQ.
+- End-to-end tracing: Single transaction lifecycle traceable via correlation ID across queues.
+
+8.4 Exit Gate & Acceptance Criteria:
+- No events lost during simulated broker restarts.
+- End-to-end workflow verified from transaction submission -> outbox -> RabbitMQ -> graph update.
+
+
+# -------------------------------------------------------------------------------
+# PHASE 9: INVESTIGATION, CASE MANAGEMENT, AND RECOVERY ORCHESTRATION
+# -------------------------------------------------------------------------------
+Objective:
+Provide financial crime analysts with tools to triage alerts, manage fraud cases,
+package evidentiary transaction subgraphs, and orchestrate response actions.
+
+9.1 Feature Breakdown:
+
+Feature 9.1: Alert Triage and Workflow Management
+- Endpoints:
+  - `GET /api/v1/alerts`: Filter alerts by severity, status, institution, and date.
+  - `PATCH /api/v1/alerts/{alert_id}/triage`: Assign, escalate, or dismiss alert.
+
+Feature 9.2: Investigation Case Management
+- Data Model (`src/sentinel_chain_drive/db/models/case.py`):
+  - `id`: UUID (Primary Key).
+  - `case_number`: String(32), Unique, Indexed (e.g., "CASE-2026-0049").
+  - `institution_id`: UUID, ForeignKey("institutions.id"), Indexed.
+  - `assigned_analyst_id`: String(128), Nullable, Indexed.
+  - `status`: Enum ("OPEN", "IN_REVIEW", "PENDING_RECOVERY", "CLOSED_FRAUD", "CLOSED_BENIGN").
+  - `priority`: Enum ("LOW", "MEDIUM", "HIGH", "CRITICAL").
+  - `summary`: String(500), Not Null.
+  - `notes`: JSON (List of timestamped analyst entries).
+  - Standard `TimestampMixin`.
+- Case Relations: Many-to-many associations linking cases to `alerts`, `transactions`,
+  and `accounts`.
+
+Feature 9.3: Evidentiary Audit Package Generation
+- Purpose: Compile a tamper-evident evidence dossier for a case.
+- Content:
+  - Associated transaction records, timestamps, and amounts.
+  - Triggering risk indicators and graph topology metrics.
+  - Recorded policy evaluation trace and AgentID signatures.
+  - DRUNIX ledger attestation receipts.
+- Export Format: Canonical JSON and cryptographically signed archive.
+
+Feature 9.4: Simulated Recovery Orchestration
+- Purpose: Model inter-bank fund recovery communication without touching real payment rails.
+- Model: `RecoveryRequest` tracking request state ("INITIATED", "ACKNOWLEDGED",
+  "RECALL_REQUESTED", "SETTLED", "REJECTED").
+- Explicit Guardrail:
+  - System MUST label all recovery actions as "SIMULATED / PROTOTYPE".
+  - The software does NOT possess direct authority or capability to freeze real bank accounts
+    or debit external institutions without human bank operator execution.
+
+9.2 Dependencies:
+- Requires Phases 2, 4, 5, 6, and 8.
+
+9.3 Required Tests:
+- Case lifecycle tests: Open -> assign -> add evidence -> resolve case.
+- Access control: Analysts can only view cases within their institutional scope.
+- Audit completeness: All case status changes and notes produce immutable audit log entries.
+
+9.4 Exit Gate & Acceptance Criteria:
+- Analysts can compile complete evidence dossiers with provenance.
+- Separation of duties enforced between analysts and supervisors.
+- No real-money recovery operations are claimed or exposed.
+
+
+# -------------------------------------------------------------------------------
+# PHASE 10: FRONTEND DASHBOARD AND OPERATOR EXPERIENCE
+# -------------------------------------------------------------------------------
+Objective:
+Build a modern, responsive, role-aware operator dashboard in React, TypeScript,
+and Vite, featuring interactive Cytoscape.js transaction graph visualizations.
+
+10.1 Feature Breakdown:
+
+Feature 10.1: Application Shell and Role-Aware Layout
+- Technology: React 18/19, TypeScript, Vite, TanStack Query, React Router v6.
+- Role Views:
+  - `Bank Operator`: Transaction monitoring and manual step-up approval queue.
+  - `Security Administrator`: AgentID registration, key rotation, capability configuration.
+  - `Fraud Analyst`: MuleChain alerts, case management, and Cytoscape.js graph explorer.
+  - `Auditor`: Tamper-evident log inspector and policy version trace viewer.
+
+Feature 10.2: Interactive Transaction Graph Explorer (Cytoscape.js)
+- Component: `src/components/graph/TransactionGraphView.tsx`.
+- Capabilities:
+  - Render accounts as nodes (styled by institution color and risk status).
+  - Render transactions as directed edges (labeled with amount, currency, timestamp).
+  - Visual highlight for identified fan-in, fan-out, pass-through, and circular paths.
+  - Bounded node expansion (max 50 hops per expansion to prevent browser freezing).
+  - Time-slider filter adjusting graph display dynamically.
+
+Feature 10.3: AgentID and Policy Administration Console
+- Forms: Built with React Hook Form and Zod schema validation.
+- Capabilities:
+  - Agent registration wizard with public key validation.
+  - Capability slider controls (single transfer caps, daily cumulative limits).
+  - Real-time policy simulator testing proposed rules against test transaction fixtures.
+
+Feature 10.4: Frontend Security & State Management
+- Authentication: OIDC token integration (JWT in memory, HttpOnly cookies for refresh).
+- Authorization: UI elements adapt to user roles, but all actions strictly verified
+  by backend API authorization checks.
+- Sanitization: All user-submitted notes and descriptions sanitized against XSS.
+
+10.2 Dependencies:
+- Requires Phase 2, 3, 4, 5, 7, and 9 backend APIs.
+
+10.3 Required Tests:
+- Vitest unit tests for components, forms, and Zod schemas.
+- Playwright end-to-end tests for critical operator workflows:
+  1. Agent registration and capability configuration.
+  2. Transaction submission and policy step-up approval.
+  3. MuleChain alert inspection and Cytoscape graph rendering.
+
+10.4 Exit Gate & Acceptance Criteria:
+- Dashboard runs cleanly via `npm run dev` and passes `npm run build`.
+- Playwright E2E test suite passes across all major browser targets.
+- Graph visualization renders smoothly with bounded datasets up to 500 nodes.
+
+
+# -------------------------------------------------------------------------------
+# PHASE 11: SECURITY HARDENING AND ADVERSARIAL VALIDATION
+# -------------------------------------------------------------------------------
+Objective:
+Subject the integrated platform to adversarial stress testing, threat model
+validation, dependency auditing, and multi-tenant privilege escalation verification.
+
+11.1 Feature Breakdown:
+
+Feature 11.1: Automated Security Scanning and SAST/DAST
+- Tools: Bandit for Python static analysis; Trivy for container image scanning;
+  `pip-audit` / `pipenv check` for dependency CVE scans.
+- Enforce Zero Critical / High CVE policy in release pipeline.
+
+Feature 11.2: Adversarial Attack Scenarios (Negative Test Suite)
+- Test Suite: `tests/adversarial/`.
+- Scenarios:
+  1. Prompt-Injected Agent Simulation: Agent submits transaction with modified
+     beneficiary hash; verified that Ed25519 signature check declines action.
+  2. High-Frequency Limit Exhaustion: 50 concurrent async workers attempt to drain
+     daily cumulative spending limit; verified atomic serialization prevents overdraw.
+  3. Cross-Tenant Query Attack: Institution A attempts to query raw account data or
+     private cases of Institution B; verified 403 Forbidden.
+  4. Nonce Replay Assault: 100 duplicate signed payloads sent within validity window;
+     verified exactly 1 succeeds and 99 are rejected as replay.
+  5. Payload Size Exhaustion: Streaming payload exceeding byte cap terminated with HTTP 413.
+
+Feature 11.3: Fault Injection and Chaos Testing
+- Scenarios:
+  1. PostgreSQL drop-out: Readiness probe reports 503; active transactions cleanly rolled back.
+  2. RabbitMQ broker kill: Outbox pattern queues events in PostgreSQL; zero event loss.
+  3. DRUNIX node timeout: Local authorization proceeds; ledger commitments queue for retry.
+
+11.2 Dependencies:
+- Requires all functional Phases (1 through 10) integrated.
+
+11.3 Required Tests:
+- Comprehensive automated regression, performance benchmark, and adversarial test runs.
+
+11.4 Exit Gate & Acceptance Criteria:
+- Zero high/critical vulnerability findings from automated security scanners.
+- All adversarial abuse tests pass with expected rejection codes.
+- Demonstrated zero data loss during simulated infrastructure component failures.
+
+
+# -------------------------------------------------------------------------------
+# PHASE 12: CONTROLLED PILOT READINESS
+# -------------------------------------------------------------------------------
+Objective:
+Prepare documentation, operational runbooks, data residency controls, and deployment
+blueprints for an authorized pilot with a participating financial institution.
+
+12.1 Feature Breakdown:
+
+Feature 12.1: Pilot Architecture & Integration Contracts
+- Deliverable: `docs/pilot_integration_guide.md`.
+- Contents:
+  - Banking interface specifications (ISO 20022 message mappings).
+  - Outbound firewall rules and network segmentation blueprints.
+  - Institution-owned key management (AWS KMS, Azure Key Vault, or HashiCorp Vault).
+
+Feature 12.2: Operational Runbooks and Disaster Recovery
+- Deliverables:
+  - `docs/runbooks/incident_response.md`.
+  - `docs/runbooks/backup_and_recovery.md`.
+  - `docs/runbooks/key_rotation_procedure.md`.
+- Procedures:
+  - PostgreSQL point-in-time recovery (PITR) test drill.
+  - Rapid agent revocation protocol drill.
+
+Feature 12.3: Data Governance and Compliance Audit Pack
+- Document exact data flows, retention schedules, and GDPR/PCI-DSS architectural
+  alignment matrices.
+- Explicit Disclaimer:
+  - Reiterate that passing automated prototype tests does not constitute formal
+    regulatory compliance certification.
+
+12.2 Dependencies:
+- Requires Phase 11 security hardening completion.
+
+12.3 Required Tests:
+- Backup restoration dry-run verified against simulated disaster scenario.
+- Clean pilot deployment verification in an isolated staging VPC / Kubernetes cluster.
+
+12.4 Exit Gate & Acceptance Criteria:
+- Complete operational runbooks and integration specifications signed off.
+- Documented pilot success criteria and measurable baseline metrics agreed.
+
+
+# -------------------------------------------------------------------------------
+# PHASE 13: PRODUCTION DEPLOYMENT AND MULTI-INSTITUTION SCALE
+# -------------------------------------------------------------------------------
+Objective:
+Harden infrastructure for multi-institution high availability, horizontal scaling,
+automated CI/CD pipelines, and enterprise SIEM observability.
+
+13.1 Feature Breakdown:
+
+Feature 13.1: Enterprise Infrastructure as Code (Kubernetes / Helm)
+- Helm Chart: `deploy/helm/sentinel-chain-drive/`.
+  - Scalable stateless FastAPI deployments with Horizontal Pod Autoscaler (HPA).
+  - Dedicated Celery / Outbox event worker pods.
+  - High-availability PostgreSQL cluster (Patroni / Cloud-native PG).
+  - Clustered RabbitMQ with Quorum queues.
+  - Ingress with TLS 1.3 termination, rate limiting, and WAF rules.
+
+Feature 13.2: Enterprise Observability and SIEM Integration
+- OpenTelemetry: Distributed trace instrumentation linking HTTP requests,
+  outbox events, RabbitMQ consumers, and database operations.
+- Metrics: Prometheus scrape endpoints exporting:
+  - `sentinel_auth_decisions_total{decision, reason}`.
+  - `sentinel_mulechain_detection_duration_seconds`.
+  - `sentinel_outbox_lag_seconds`.
+- Logging: Fluent Bit sidecar shipping structured JSON logs to institutional SIEM
+  (Splunk, Elastic, Datadog).
+
+Feature 13.3: Multi-Institution Multi-Tenancy Governance
+- Strict row-level security (RLS) policies in PostgreSQL enforcing tenant isolation.
+- Institutional onboarding / offboarding automated workflows.
+
+13.2 Dependencies:
+- Requires all preceding phases (1 through 12).
+
+13.3 Required Tests:
+- Scale load testing: 2,000 TPS payment authorization throughput benchmarked
+  with sub-50ms p99 latency.
+- Failover drill: Simulated node termination with zero service interruption.
+
+13.4 Exit Gate & Acceptance Criteria:
+- Automated multi-region or multi-zone deployment succeeds reproducibly via CI/CD.
+- Service Level Objectives (SLOs) demonstrated under full load.
+
+
+# ===============================================================================
+# 6. OPEN DESIGN DECISIONS AND UNVERIFIED EXTERNAL DEPENDENCIES
+# ===============================================================================
+
+The following design decisions and external dependencies CANNOT be verified from
+the current repository state and MUST NOT be assumed without explicit partner
+and platform clarification:
+
+1. DRUNIX Technical Specifications (Critical External Dependency):
+   - Current Repository State: Implemented as an in-memory `MockDRUNIXAdapter`
+     producing simulated transaction hashes (`0x...`).
+   - Unverified Attributes: DRUNIX node communication protocol (REST vs. gRPC vs.
+     custom RPC), consensus finality latency, ledger query syntax, whether DRUNIX
+     executes smart contracts or functions purely as an attestation log, and whether
+     Solidity is supported or required.
+   - Guardrail: Solidity smart contracts MUST NOT be introduced until an official
+     DRUNIX specification document is reviewed and authorized.
+
+2. Production Key Management Service (KMS) Provider:
+   - Current Repository State: Local Ed25519 keys and HMAC strings loaded via
+     environment variables and settings.
+   - Open Decision: Whether participating banks require PKCS#11 hardware security
+     modules (HSM), AWS KMS, Azure Key Vault, or HashiCorp Vault for signing
+     agent capability credentials.
+
+3. Cross-Bank HMAC Key Governance:
+   - Current Repository State: Single HMAC key parameter in settings.
+   - Open Decision: How participating institutions securely agree upon, rotate,
+     and share the epoch secret key used for cross-bank `MeshID` pseudonymization
+     without establishing a central point of compromise.
+
+4. Bank Core Banking Adapter Protocols:
+   - Current Repository State: Simulated internal REST API endpoints.
+   - Open Decision: Final message format for bank pilots (e.g., ISO 20022 camt/pacs
+     messages vs. proprietary REST webhooks).
+
+5. Real-Time Fund Freezing Authority:
+   - Explicit Confirmation: Sentinel Chain Drive does NOT possess direct legal or
+     technical capability to freeze real accounts or reverse bank transfers.
+     All response actions remain recommendations until authorized by bank operators.
+
+
+# ===============================================================================
+# 7. DEPLOYMENT PROGRESSION MODEL (LOCAL -> PILOT -> PRODUCTION)
+# ===============================================================================
+
+Stage 1: Local Development & CI (Phases 1 - 10)
+- Execution Target: Local developer workstations and GitHub Actions / GitLab CI.
+- Infrastructure: Docker Compose with PostgreSQL 16, RabbitMQ 3.12, and mock DRUNIX.
+- Data Profile: 100% synthetic deterministic test fixtures.
+- Security Profile: Local mock keys; strict linting and test coverage gates.
+
+Stage 2: Hardened Staging & Pilot Readiness (Phases 11 - 12)
+- Execution Target: Isolated cloud VPC or bank lab Kubernetes cluster.
+- Infrastructure: Non-root container pods, managed PostgreSQL with SSL, RabbitMQ
+  Quorum queues, KMS-backed keys, and live DRUNIX testnet nodes.
+- Data Profile: Realistic synthetic volume simulations; zero real PII.
+- Security Profile: Automated vulnerability scans, ingress WAF, OIDC Keycloak auth.
+
+Stage 3: Enterprise Production (Phase 13)
+- Execution Target: Bank-controlled on-premises or private sovereign cloud.
+- Infrastructure: High-availability multi-zone Kubernetes, HSM key signing,
+  OpenTelemetry instrumentation, enterprise SIEM forwarding.
+- Data Profile: Institutional transaction streams governed by row-level security.
+- Security Profile: Formal SOC 2 / PCI-DSS independent audit compliance.
+
+
+# ===============================================================================
+# 8. MASTER PHASE DEPENDENCIES AND PHASE-GATE VERIFICATION MATRIX
+# ===============================================================================
+
+Strict Dependency Chain:
+Phase 1 (Foundation)
+   |
+   v
+Phase 2 (Banking Domain & Transactions)
+   |
+   v
+Phase 3 (AgentID Cryptographic Credentials & Capabilities)
+   |
+   v
+Phase 4 (Deterministic Policy Engine)
+   |
+   v
+Phase 5 (MuleChain Graph-Based Fraud Intelligence)
+   |
+   v
+Phase 6 (Privacy Gateway & Cross-Bank Correlation)
+   |
+   v
+Phase 7 (DRUNIX Replaceable Ledger Adapter)
+   |
+   v
+Phase 8 (Event Processing & Transactional Outbox)
+   |
+   v
+Phase 9 (Investigation Case Management & Evidentiary Dossiers)
+   |
+   v
+Phase 10 (Frontend Dashboard & Cytoscape Graph UI)
+   |
+   v
+Phase 11 (Security Hardening & Adversarial Attack Testing)
+   |
+   v
+Phase 12 (Controlled Pilot Readiness & Operational Runbooks)
+   |
+   v
+Phase 13 (Production Deployment, Scaling, & Multi-Institution SLOs)
+
+Phase-Gate Rules:
+1. No phase may commence until its direct predecessor has satisfied all listed
+   exit criteria and achieved 100% passing automated test runs.
+2. Incomplete interfaces, failing type checks, or unresolved security warnings
+   strictly block advancement to subsequent phases.
+3. No feature may claim production readiness, regulatory compliance, or real-money
+   operational capability without the requisite independent institutional validation.
+
+# ===============================================================================
+# END OF BUILD ORDER SPECIFICATION
+# ===============================================================================
