@@ -111,9 +111,21 @@ class Settings(BaseSettings):
         le=300,
         description="Connection pool acquisition timeout in seconds",
     )
+    POSTGRES_USE_NULL_POOL: bool = Field(
+        default=False,
+        description="Disable client-side pooling when using an external transaction pooler",
+    )
+    POSTGRES_STATEMENT_CACHE_SIZE: int | None = Field(
+        default=None,
+        description="Explicit statement cache size for asyncpg (set to 0 for transaction poolers)",
+    )
     DATABASE_URL: str | None = Field(
         default=None,
         description="Explicit async database connection URL overriding individual fields",
+    )
+    ALEMBIC_DATABASE_URL: str | None = Field(
+        default=None,
+        description="Dedicated connection URL for Alembic migrations (e.g. direct session port)",
     )
 
     # Integrations: DRUNIX ledger interface settings
@@ -139,10 +151,16 @@ class Settings(BaseSettings):
     def async_database_url(self) -> str:
         """Construct or return the async PostgreSQL database connection URL."""
         if self.DATABASE_URL:
-            # Ensure asyncpg driver dialect is present if standard postgresql is passed
-            if self.DATABASE_URL.startswith("postgresql://"):
-                return self.DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://", 1)
-            return self.DATABASE_URL
+            url = self.DATABASE_URL
+            if url.startswith("postgres://"):
+                url = url.replace("postgres://", "postgresql+asyncpg://", 1)
+            elif url.startswith("postgresql://"):
+                url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
+
+            # asyncpg accepts 'ssl=' rather than libpq 'sslmode='
+            if "sslmode=" in url:
+                url = url.replace("sslmode=", "ssl=")
+            return url
 
         password = self.POSTGRES_PASSWORD.get_secret_value()
         return (
@@ -153,14 +171,21 @@ class Settings(BaseSettings):
     @property
     def sync_database_url(self) -> str:
         """Construct or return the sync PostgreSQL database connection URL for Alembic."""
-        if self.DATABASE_URL:
-            if self.DATABASE_URL.startswith("postgresql+asyncpg://"):
-                return self.DATABASE_URL.replace(
-                    "postgresql+asyncpg://", "postgresql+psycopg://", 1
-                )
-            if self.DATABASE_URL.startswith("postgresql://"):
-                return self.DATABASE_URL.replace("postgresql://", "postgresql+psycopg://", 1)
-            return self.DATABASE_URL
+        target_url = self.ALEMBIC_DATABASE_URL or self.DATABASE_URL
+        if target_url:
+            if target_url.startswith("postgres://"):
+                target_url = target_url.replace("postgres://", "postgresql+psycopg://", 1)
+            elif target_url.startswith("postgresql+asyncpg://"):
+                target_url = target_url.replace("postgresql+asyncpg://", "postgresql+psycopg://", 1)
+            elif target_url.startswith("postgresql://"):
+                target_url = target_url.replace("postgresql://", "postgresql+psycopg://", 1)
+            elif target_url.startswith("sqlite+aiosqlite://"):
+                target_url = target_url.replace("sqlite+aiosqlite://", "sqlite://", 1)
+
+            # psycopg expects 'sslmode=' rather than 'ssl='
+            if "ssl=" in target_url and "sslmode=" not in target_url:
+                target_url = target_url.replace("ssl=", "sslmode=")
+            return target_url
 
         password = self.POSTGRES_PASSWORD.get_secret_value()
         return (
@@ -168,15 +193,46 @@ class Settings(BaseSettings):
             f"{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
         )
 
+    @property
+    def alembic_async_url(self) -> str:
+        """Construct or return the async database connection URL for Alembic online runs."""
+        if self.ALEMBIC_DATABASE_URL:
+            url = self.ALEMBIC_DATABASE_URL
+            if url.startswith("postgres://"):
+                url = url.replace("postgres://", "postgresql+asyncpg://", 1)
+            elif url.startswith("postgresql+psycopg://"):
+                url = url.replace("postgresql+psycopg://", "postgresql+asyncpg://", 1)
+            elif url.startswith("postgresql://"):
+                url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
+
+            if "sslmode=" in url:
+                url = url.replace("sslmode=", "ssl=")
+            return url
+        return self.async_database_url
+
     def get_safe_metadata(self) -> dict[str, Any]:
         """Return non-sensitive runtime metadata safe for exposure in diagnostics."""
+        db_host = self.POSTGRES_HOST
+        db_port = self.POSTGRES_PORT
+        db_name = self.POSTGRES_DB
+        if self.DATABASE_URL:
+            try:
+                from sqlalchemy.engine import make_url
+
+                parsed = make_url(self.DATABASE_URL)
+                db_host = parsed.host or "unknown"
+                db_port = parsed.port or 5432
+                db_name = parsed.database or "unknown"
+            except Exception:
+                pass
+
         return {
             "app_name": self.APP_NAME,
             "version": self.APP_VERSION,
             "environment": self.ENVIRONMENT,
-            "database_host": self.POSTGRES_HOST,
-            "database_port": self.POSTGRES_PORT,
-            "database_name": self.POSTGRES_DB,
+            "database_host": db_host,
+            "database_port": db_port,
+            "database_name": db_name,
             "drunix_adapter": self.DRUNIX_ADAPTER_TYPE,
         }
 

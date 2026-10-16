@@ -58,3 +58,24 @@
 
 4. **Regulatory and Compliance Notice**:
    - Successful automated test execution in Phase 1 provides foundational verification but does not constitute formal regulatory compliance (e.g., PCI-DSS, SOC 2, ISO 27001) or production readiness.
+
+---
+
+## 4. Phase 2 Security Controls & Limitations
+
+1. **Synthetic Data Exclusivity**:
+   - All records (institutions, routing numbers, account numbers, transactions) are strictly synthetic. No real customer PII, account numbers, or bank credentials are required or permitted in the schema.
+
+2. **Transaction State Machine Non-Permissiveness**:
+   - Submitted transactions are placed exclusively into `PENDING_AUTHORIZATION`.
+   - The simulation will **never** automatically grant authorization or settle a transaction upon submission. This prevents false impressions of settlement prior to AgentID and Policy Engine evaluation in subsequent phases.
+
+3. **Decimal Safety Enforcement**:
+   - All monetary balances and transaction amounts use exact `Numeric(18, 4)` and `Decimal` types. Binary floating-point representation is strictly rejected to prevent precision loss.
+
+4. **Multi-Tenant Header Boundary**:
+   - Tenant isolation is enforced via the `X-Institution-ID` header. Accessing accounts or transactions belonging to foreign institutions returns HTTP 403 Forbidden.
+
+5. **Simulation Action Gateway Restriction**:
+   - Transitioning transaction states out of `PENDING_AUTHORIZATION` can only be performed via the dedicated `/api/v1/transactions/{id}/simulate-action` gateway, which enforces valid state machine transitions and maintains atomic audit trail logs. Unrestricted updates to status fields via PATCH are prohibited.
+

@@ -511,6 +511,18 @@ Feature 3.4: Agent Action Authorization Service
 - An agent cannot execute an action exceeding its assigned single or daily capability limits.
 - Full negative test coverage for tampering, replay, and expiration.
 
+3.5 Implementation Status & Verification Evidence:
+- Status: COMPLETED AND VERIFIED (Phase 3).
+- Exit Gate Satisfied: Yes.
+- Cryptographic Engine: PyCA `cryptography` Ed25519 signature verification with canonical JSON serialization and algorithm allowlist.
+- Replay Protection: Database-backed single-use nonce table (`processed_nonces`) with unique constraint and strict clock skew checking (|now - ts| <= 300s).
+- Capability Registry: Granular bounds on single transaction amount, 24-hour cumulative spend, currency whitelist, destination account whitelist, and UTC operating windows.
+- Lifecycle Governance: Server-enforced state transitions (`PENDING_APPROVAL`, `ACTIVE`, `SUSPENDED`, `REVOKED`, `EXPIRED`); `REVOKED` is terminal and non-reversible.
+- Audit Records: Immutable logs for agent registration, lifecycle transitions, key rotations, capability assignments, credential lifecycle, and authorization outcomes (`authorization_records`).
+- Automated Test Suite: 63/63 unit and integration tests passing covering standard workflows and adversarial scenarios.
+- Static Checking: Ruff lint/format 100% clean; Mypy strict mode 100% clean across 81 files.
+- Migration: `20261016_0003_agent_id_and_capability_registry.py` reviewed and validated.
+
 
 # -------------------------------------------------------------------------------
 # PHASE 4: DETERMINISTIC POLICY ENGINE

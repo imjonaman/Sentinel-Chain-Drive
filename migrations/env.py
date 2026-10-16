@@ -9,10 +9,10 @@ from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from sentinel_chain_drive.core.config import get_settings
-from sentinel_chain_drive.db.base import Base
 
 # Import all models to ensure metadata registration
-from sentinel_chain_drive.db.models import audit_log  # noqa: F401
+from sentinel_chain_drive.db import models  # noqa: F401
+from sentinel_chain_drive.db.base import Base
 
 config = context.config
 
@@ -54,7 +54,7 @@ def do_run_migrations(connection: Connection) -> None:
 async def run_async_migrations() -> None:
     """Run migrations in 'online' mode using the async engine configuration."""
     configuration = config.get_section(config.config_ini_section) or {}
-    configuration["sqlalchemy.url"] = settings.async_database_url
+    configuration["sqlalchemy.url"] = settings.alembic_async_url
 
     connectable = async_engine_from_config(
         configuration,

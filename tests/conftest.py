@@ -5,7 +5,12 @@ from collections.abc import AsyncGenerator
 
 import pytest
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
+from sqlalchemy.ext.asyncio import (
+    AsyncEngine,
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
 from sqlalchemy.pool import StaticPool
 
 # Ensure test environment variable defaults before settings load
@@ -17,6 +22,7 @@ from pydantic import SecretStr
 from sentinel_chain_drive.api.main import create_app
 from sentinel_chain_drive.core.config import Settings
 from sentinel_chain_drive.db.base import Base
+from sentinel_chain_drive.db.session import get_db_session
 from sentinel_chain_drive.services.system_service import SystemService
 
 
@@ -58,9 +64,49 @@ async def sqlite_engine() -> AsyncGenerator[AsyncEngine]:
 
 
 @pytest.fixture
+async def db_session(sqlite_engine: AsyncEngine) -> AsyncGenerator[AsyncSession]:
+    """Provide an isolated AsyncSession bound to the in-memory SQLite engine."""
+    session_factory = async_sessionmaker(
+        bind=sqlite_engine,
+        class_=AsyncSession,
+        expire_on_commit=False,
+    )
+    async with session_factory() as session:
+        yield session
+        await session.rollback()
+
+
+@pytest.fixture
 async def app_client(test_settings: Settings) -> AsyncGenerator[AsyncClient]:
     """Async HTTP client bound to the test application."""
     test_app = create_app(settings=test_settings)
+    transport = ASGITransport(app=test_app)
+    async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+        yield client
+
+
+@pytest.fixture
+async def client_with_db(
+    sqlite_engine: AsyncEngine, test_settings: Settings
+) -> AsyncGenerator[AsyncClient]:
+    """Async HTTP client with database dependency overridden by in-memory SQLite."""
+    session_factory = async_sessionmaker(
+        bind=sqlite_engine,
+        class_=AsyncSession,
+        expire_on_commit=False,
+    )
+    test_app = create_app(settings=test_settings)
+
+    async def override_get_db_session() -> AsyncGenerator[AsyncSession]:
+        async with session_factory() as session:
+            try:
+                yield session
+                await session.commit()
+            except Exception:
+                await session.rollback()
+                raise
+
+    test_app.dependency_overrides[get_db_session] = override_get_db_session
     transport = ASGITransport(app=test_app)
     async with AsyncClient(transport=transport, base_url="http://testserver") as client:
         yield client

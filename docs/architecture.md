@@ -101,3 +101,34 @@ Every incoming HTTP request is assigned a unique `X-Correlation-ID` (or adopts a
 - **Migration Commands**:
   - `alembic upgrade head`: Apply pending migrations.
   - `alembic downgrade -1`: Roll back the last migration.
+
+---
+
+## 5. Phase 2: Simulated Banking Environment & Transaction Domain
+
+Phase 2 establishes a secure, deterministic, multi-institution simulation environment that provides the data models and API contracts required by future authorization (Phase 3) and fraud detection (Phase 4) phases.
+
+### 5.1 Institutions Management
+- **Model**: `Institution` with `institution_code`, `routing_identifier`, `status` (`ACTIVE`, `SUSPENDED`, `INACTIVE`), and `settings`.
+- **Transitions**: Controlled state transitions (`ACTIVE` <-> `SUSPENDED`, `ACTIVE` -> `INACTIVE`). `INACTIVE` is terminal.
+- **Tenant Isolation**: Institution records define the root multi-tenant boundaries. Cross-institution operations require explicit authorization.
+
+### 5.2 Accounts Management
+- **Model**: `Account` associated with an `Institution`.
+- **Monetary Safety**: Exact `Numeric(18, 4)` precision. Floating-point arithmetic is strictly prohibited. Database check constraint enforces `balance >= 0`.
+- **State Machine**: `ACTIVE` <-> `FROZEN`, `ACTIVE` -> `CLOSED`. `CLOSED` is terminal.
+- **Isolation**: Tenant header `X-Institution-ID` prevents unauthorized cross-tenant account queries (HTTP 403).
+
+### 5.3 Transaction Domain & Gateway
+- **Submission State**: Transactions are submitted into `PENDING_AUTHORIZATION`. They are **never** auto-authorized or settled upon submission, preserving the boundary for AgentID policy decisions.
+- **Idempotency Semantics**:
+  - Idempotency key uniqueness enforced at both database constraint and service level.
+  - Exact retry with matching parameters returns existing transaction (HTTP 200).
+  - Retry with identical key but conflicting parameters returns HTTP 409 (`IDEMPOTENCY_CONFLICT`).
+- **Validation**: Strict validation of positive amounts, supported currency matching, account existence, institution ownership, and operational account/institution states.
+- **Auditability**: `TransactionStatusHistory` table atomically logs every transition with timestamps, prior/new status, rationale, and actor.
+- **Simulation Lifecycle Gateway**: `/api/v1/transactions/{id}/simulate-action` exposes explicit simulation controls (`SIMULATE_HOLD`, `SIMULATE_SETTLE`, `SIMULATE_REJECT`, `CANCEL`), preventing clients from arbitrarily updating privileged transaction states directly.
+
+### 5.4 Synthetic Data Generation
+- Deterministic seed script (`sentinel_chain_drive.db.seed`) populates multi-institution environments (Apex Bank, Beacon Trust, Crestline Bank, Dormant Mutual) and realistic synthetic accounts and transactions. All data is clearly flagged with synthetic metadata.
+

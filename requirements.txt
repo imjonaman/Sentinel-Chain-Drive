@@ -21,8 +21,12 @@ certifi==2026.7.22
     # via
     #   httpcore
     #   httpx
+cffi==2.1.1
+    # via cryptography
 click==8.5.0
     # via uvicorn
+cryptography==50.0.2
+    # via sentinel-chain-drive (pyproject.toml)
 fastapi==0.143.2
     # via sentinel-chain-drive (pyproject.toml)
 greenlet==3.5.6
@@ -53,6 +57,8 @@ psycopg[binary]==3.3.6
     # via sentinel-chain-drive (pyproject.toml)
 psycopg-binary==3.3.6
     # via psycopg
+pycparser==3.11
+    # via cffi
 pydantic==2.14.1
     # via
     #   fastapi
