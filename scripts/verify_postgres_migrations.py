@@ -79,11 +79,13 @@ def validate_migrations(sync_url: str) -> dict[str, Any]:
         "institutions",
         "accounts",
         "transactions",
+        "transaction_status_history",
         "agents",
         "agent_credentials",
-        "agent_capabilities",
+        "capabilities",
         "processed_nonces",
-        "audit_events",
+        "authorization_records",
+        "audit_logs",
         "policies",
         "spending_reservations",
         "step_up_challenges",
@@ -121,7 +123,38 @@ def validate_migrations(sync_url: str) -> dict[str, Any]:
     ]:
         assert required_idx in index_names, f"Missing index: {required_idx}"
         report["constraints_verified"].append(required_idx)
-    print("[MIGRATION_CHECK] Verified unique constraints and performance indexes.")
+
+    # Check indexes on audit_logs
+    audit_indexes = inspector.get_indexes("audit_logs")
+    audit_index_names = [idx["name"] for idx in audit_indexes]
+    for required_idx in [
+        "ix_audit_logs_event_type",
+        "ix_audit_logs_severity",
+        "ix_audit_logs_correlation_id",
+        "ix_audit_logs_created_at_desc",
+    ]:
+        assert required_idx in audit_index_names, f"Missing index on audit_logs: {required_idx}"
+        report["constraints_verified"].append(required_idx)
+
+    # Check indexes and foreign keys on capabilities
+    cap_indexes = inspector.get_indexes("capabilities")
+    cap_index_names = [idx["name"] for idx in cap_indexes]
+    for required_idx in [
+        "ix_capabilities_agent_id",
+        "ix_capabilities_institution_id",
+        "ix_capabilities_is_active",
+    ]:
+        assert required_idx in cap_index_names, f"Missing index on capabilities: {required_idx}"
+        report["constraints_verified"].append(required_idx)
+
+    cap_fks = inspector.get_foreign_keys("capabilities")
+    cap_fk_targets = {fk["referred_table"] for fk in cap_fks}
+    assert "agents" in cap_fk_targets, "Missing foreign key to agents on capabilities"
+    assert "institutions" in cap_fk_targets, "Missing foreign key to institutions on capabilities"
+    report["constraints_verified"].append("fk_capabilities_agents")
+    report["constraints_verified"].append("fk_capabilities_institutions")
+
+    print("[MIGRATION_CHECK] Verified unique constraints, foreign keys, and performance indexes.")
 
     # 3. Test Downgrade to 20261016_0003
     print("[MIGRATION_CHECK] Testing downgrade to 20261016_0003...")
@@ -154,7 +187,7 @@ def validate_migrations(sync_url: str) -> dict[str, Any]:
     report["re_upgrade_verified"] = True
     print("[MIGRATION_CHECK] Re-upgrade verified successfully.")
 
-
+    engine.dispose()
     return report
 
 

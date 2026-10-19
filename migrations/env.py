@@ -54,7 +54,16 @@ def do_run_migrations(connection: Connection) -> None:
 async def run_async_migrations() -> None:
     """Run migrations in 'online' mode using the async engine configuration."""
     configuration = config.get_section(config.config_ini_section) or {}
-    configuration["sqlalchemy.url"] = settings.alembic_async_url
+    current_settings = get_settings()
+    target_url = config.get_main_option("sqlalchemy.url") or current_settings.alembic_async_url
+    if target_url.startswith("postgresql+psycopg://"):
+        target_url = target_url.replace("postgresql+psycopg://", "postgresql+asyncpg://", 1)
+    elif target_url.startswith("postgresql://"):
+        target_url = target_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+    elif target_url.startswith("sqlite://"):
+        target_url = target_url.replace("sqlite://", "sqlite+aiosqlite://", 1)
+
+    configuration["sqlalchemy.url"] = target_url
 
     connectable = async_engine_from_config(
         configuration,
