@@ -25,6 +25,7 @@ class TransactionStatus(enum.StrEnum):
 
     SUBMITTED = "SUBMITTED"
     PENDING_AUTHORIZATION = "PENDING_AUTHORIZATION"
+    AUTHORIZED = "AUTHORIZED"
     HELD = "HELD"
     SETTLED = "SETTLED"
     REJECTED = "REJECTED"
@@ -47,13 +48,21 @@ VALID_TRANSACTION_TRANSITIONS: dict[TransactionStatus, set[TransactionStatus]] =
         TransactionStatus.REJECTED,
     },
     TransactionStatus.PENDING_AUTHORIZATION: {
+        TransactionStatus.AUTHORIZED,
         TransactionStatus.HELD,
         TransactionStatus.SETTLED,
         TransactionStatus.REJECTED,
         TransactionStatus.CANCELLED,
     },
+    TransactionStatus.AUTHORIZED: {
+        TransactionStatus.SETTLED,
+        TransactionStatus.REJECTED,
+        TransactionStatus.CANCELLED,
+        TransactionStatus.HELD,
+    },
     TransactionStatus.HELD: {
         TransactionStatus.PENDING_AUTHORIZATION,
+        TransactionStatus.AUTHORIZED,
         TransactionStatus.SETTLED,
         TransactionStatus.REJECTED,
         TransactionStatus.CANCELLED,

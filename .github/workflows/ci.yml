@@ -1,0 +1,66 @@
+name: Sentinel Chain Drive CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test-and-verify:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: sentinel_test
+          POSTGRES_USER: sentinel_test_user
+          POSTGRES_PASSWORD: sentinel_test_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Run Ruff Linter
+        run: |
+          ruff check .
+
+      - name: Run Strict Mypy
+        run: |
+          mypy src tests
+
+      - name: Live PostgreSQL Migration Validation
+        env:
+          TEST_POSTGRES_URL: postgresql+asyncpg://sentinel_test_user:sentinel_test_password@localhost:5432/sentinel_test
+        run: |
+          python scripts/verify_postgres_migrations.py
+
+      - name: Run Full Pytest Suite with Live PostgreSQL Concurrency
+        env:
+          TEST_POSTGRES_URL: postgresql+asyncpg://sentinel_test_user:sentinel_test_password@localhost:5432/sentinel_test
+          POSTGRES_HOST: localhost
+          POSTGRES_PORT: 5432
+          POSTGRES_DB: sentinel_test
+          POSTGRES_USER: sentinel_test_user
+          POSTGRES_PASSWORD: sentinel_test_password
+        run: |
+          pytest -v

@@ -734,6 +734,8 @@ class BankingService:
 
         # Map simulation action to target transaction status
         action_mapping = {
+            SimulationAction.SIMULATE_AUTHORIZE: TransactionStatus.AUTHORIZED,
+            SimulationAction.AUTHORIZE: TransactionStatus.AUTHORIZED,
             SimulationAction.SIMULATE_SETTLE: TransactionStatus.SETTLED,
             SimulationAction.SETTLE: TransactionStatus.SETTLED,
             SimulationAction.SIMULATE_HOLD: TransactionStatus.HELD,

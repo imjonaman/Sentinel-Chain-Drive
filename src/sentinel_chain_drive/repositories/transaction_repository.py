@@ -141,3 +141,42 @@ class TransactionRepository(BaseRepository[Transaction]):
         items = items_result.scalars().all()
         total = total_result.scalar_one()
         return items, total
+
+    async def list_for_graph(
+        self,
+        currency: str,
+        from_time: datetime | None = None,
+        to_time: datetime | None = None,
+        institution_id: uuid.UUID | None = None,
+        status: TransactionStatus = TransactionStatus.SETTLED,
+        limit: int = 5000,
+    ) -> Sequence[Transaction]:
+        """Fetch transactions for graph topology analysis deterministically ordered.
+
+        Filtering defaults strictly to settled transactions and requires exact currency isolation.
+        """
+        stmt = select(Transaction).where(
+            Transaction.currency == currency,
+            Transaction.status == status,
+        )
+
+        if institution_id is not None:
+            stmt = stmt.where(
+                or_(
+                    Transaction.origin_institution_id == institution_id,
+                    Transaction.destination_institution_id == institution_id,
+                )
+            )
+
+        if from_time is not None:
+            stmt = stmt.where(Transaction.created_at >= from_time)
+
+        if to_time is not None:
+            stmt = stmt.where(Transaction.created_at <= to_time)
+
+        # Deterministic sorting for reproducible graph reconstruction
+        stmt = stmt.order_by(Transaction.created_at.asc(), Transaction.id.asc()).limit(limit)
+
+        result = await self.session.execute(stmt)
+        return result.scalars().all()
+

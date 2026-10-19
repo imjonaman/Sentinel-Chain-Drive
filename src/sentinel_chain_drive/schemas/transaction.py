@@ -14,9 +14,11 @@ from sentinel_chain_drive.db.models.transaction import TransactionStatus, Transa
 class SimulationAction(enum.StrEnum):
     """Permitted simulation-only lifecycle operations."""
 
+    SIMULATE_AUTHORIZE = "SIMULATE_AUTHORIZE"
     SIMULATE_SETTLE = "SIMULATE_SETTLE"
     SIMULATE_HOLD = "SIMULATE_HOLD"
     SIMULATE_REJECT = "SIMULATE_REJECT"
+    AUTHORIZE = "AUTHORIZE"
     SETTLE = "SETTLE"
     HOLD = "HOLD"
     REJECT = "REJECT"

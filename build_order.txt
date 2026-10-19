@@ -609,6 +609,22 @@ Feature 4.3: Step-Up and Approval Workflow
 - Missing authorization evidence cannot result in an ALLOW decision.
 - Every decision produces an immutable audit record referencing the exact policy version.
 
+4.5 Implementation Status & Verification Evidence:
+- Status: COMPLETED AND VERIFIED (Phase 4).
+- Exit Gate Satisfied: Yes.
+- Decision Engine: Deterministic rule pipeline strictly evaluating across 7 precedence tiers producing exactly one outcome: ALLOW, STEP_UP, HOLD, or DECLINE.
+- Pipeline Steps: 10-step evaluation enforcing schema validation, caller context, AgentID verification, intent hash recomputation, active capability verification, account restrictions, velocity checks, policy rule execution, atomic persistence, and response construction.
+- Concurrency & Double-Spend Protection: Atomic `spending_reservations` records serialized with `SELECT ... FOR UPDATE` row locks preventing parallel transactions from exceeding cumulative velocity limits.
+- Step-Up Challenges & Dual Control: Bound to immutable transaction-intent hash and policy version; strictly enforces separation of duties (initiating agent cannot approve) and lifecycle expiration.
+- Hold Management: Structured resolution workflow for fraud investigation, ensuring held transactions cannot execute or settle without explicit authorized resolution.
+- Multi-Tenant & Information Shielding: Public endpoints return safe reason codes while shielding internal rule mechanics; authorized `/evaluations/{id}/detail` route reveals rule traces for investigators.
+- Audit Atomicity: Immutable `policy_evaluations` records atomically committed with decision and spending reservations; failures roll back completely.
+- Policy Versioning & Administration: Monotonically increasing version numbers, explicit activation tracking (`activated_by`, `activated_at`), automatic deactivation of superseded versions, and multi-tenant scoping with global default fallback.
+- Automated Test Suite: 105/105 unit and integration tests passing covering all 4 outcomes, precedence hierarchy, step-up workflows, hold resolution, concurrency reservation, idempotency, clock skew, replay attacks, and tenant isolation.
+- Static Checking: Ruff lint/format 100% clean; Mypy strict mode 100% clean across 92 source files.
+- Database Migration: `20261019_0004_deterministic_policy_engine.py` generated and verified via static SQL generation against schema.
+
+
 
 # -------------------------------------------------------------------------------
 # PHASE 5: MULECHAIN - GRAPH-BASED FRAUD INTELLIGENCE
@@ -690,6 +706,24 @@ Feature 5.4: Asynchronous Processing and Alert Generation
 - Detection executes asynchronously without adding latency to the synchronous transaction path.
 - All risk scores include verifiable evidence and detection rule provenance.
 
+5.5 Implementation Status & Verification Evidence:
+- Status: COMPLETED AND VERIFIED (Phase 5).
+- Exit Gate Satisfied: Yes.
+- Graph Engine: In-memory directed multigraph (`MultiDiGraph`) via NetworkX, preserving parallel transaction edges, deterministic sorting, cutoff boundaries, and strict currency isolation.
+- Status Invariant: Only `SETTLED` transactions admitted as completed fund flows.
+- 4 Topological Anomaly Detectors:
+  1. Fan-In Smurfing (`FanInDetector`): Multiple source accounts to common destination with subset burst deduplication.
+  2. Fan-Out Dispersal (`FanOutDetector`): Single source distributing to multiple destinations within configurable windows.
+  3. Rapid Pass-Through (`RapidPassThroughDetector`): Ingress funds rapidly dispersed onward with high retention ratio.
+  4. Circular Layering (`CircularLayeringDetector`): Directed cycles of length 2 to K hops with cycle bounds avoiding combinatorial explosion.
+- Explainable Risk Scoring (0–100 Scale): Deterministic composite score mapped to severity tiers (`LOW`, `MEDIUM`, `HIGH`, `CRITICAL`), retaining granular evidence.
+- Idempotent Alert Persistence: `FraudAlert` database model and Alembic migration `20261019_0005_mulechain_fraud_alerts.py`, unique on `(primary_institution_id, dedup_fingerprint)` using SHA-256 fingerprinting.
+- Phase 4 Policy Engine Integration Bridge: Produces `RiskSignals` telemetry (`risk_score`, `velocity_warning`, `manual_review_flag`) driving deterministic `HOLD`/`STEP_UP` in Policy Engine.
+- Multi-Tenancy & API: `POST /api/v1/mulechain/analyze`, `GET /api/v1/mulechain/alerts/{id}`, `GET /api/v1/mulechain/alerts` strictly isolated via `X-Institution-ID`.
+- Automated Test Suite: 144/144 tests passing across full repository (31 Phase 5 tests: 25 unit, 6 integration). Zero regressions in Phases 1–4.
+- Static Checking: Ruff clean; strict Mypy clean across 107 source files.
+- Database Migration: `20261019_0005_mulechain_fraud_alerts.py` generated and verified via static SQL generation against schema.
+
 
 # -------------------------------------------------------------------------------
 # PHASE 6: PRIVACY GATEWAY AND CROSS-INSTITUTION INTELLIGENCE
@@ -747,6 +781,20 @@ Feature 6.3: Privacy Gateway Access Control & Tenant Isolation
 - Cross-bank correlation functions reliably using HMAC pseudonyms.
 - Direct account numbers and PII are never published to the shared indicator registry.
 - Rate limiting and query constraints prevent pseudonym enumeration.
+
+6.5 Implementation Status & Verification Evidence:
+- Status: COMPLETED AND VERIFIED (Phase 6).
+- Exit Gate Satisfied: Yes.
+- Cryptographic Engine: Purpose-bound HMAC-SHA256 pseudonymization (`MeshID`) using PyCA `cryptography`, normalized uppercase institution codes, canonical string representations, float/unkeyed hash prohibition, and versioned epoch rotation (`epoch_2026_q4`).
+- Disclosure & Redaction Controls: Strict field-level allowlist filtering and prohibited-field rejection (`raw_account_number`, `customer_name`, `private_key`, `credentials`, `transaction_ids`, `balance`). Coarse volume tiers (`TIER_MICRO_UNDER_1K` through `TIER_HIGH_OVER_100K`) preserve topological utility without leaking exact balances.
+- Shared Indicator Registry: `SharedIndicator` model and Alembic migration `20261019_0006_privacy_gateway_shared_indicators.py` with unique constraint `uq_shared_indicators_origin_mesh_type_policy` for idempotent publication.
+- Anti-Enumeration & Rate Limiting: Strict query scoping requiring explicit target `MeshID` (wildcard/bulk listing forbidden); sliding-window rate limiting per institution via `PrivacyQueryRateLimiter`.
+- Audit Logging: Immutable `PrivacyAuditLog` recording publication, query, revocation, withdrawal, and rejected attempts with transactional consistency and sensitive data redaction.
+- Policy Engine Telemetry Bridge: `PrivacyGatewayPolicyBridge` translates active cross-institution indicators into deterministic `RiskSignals` (0.90 + review flag for `CRITICAL`, 0.75 for `HIGH`, explicit `NO_MATCH` for clean accounts, explicit `UNAVAILABLE` fallback for gateway outages).
+- Multi-Tenancy & API: `POST /api/v1/privacy/indicators/publish`, `POST /api/v1/privacy/indicators/publish-from-alert`, `POST /api/v1/privacy/indicators/query`, `GET /api/v1/privacy/indicators/{id}`, `POST /api/v1/privacy/indicators/{id}/revoke`, `GET /api/v1/privacy/audit-summary`.
+- Automated Test Suite: 176/176 tests passing across full repository (32 Phase 6 tests: 23 unit, 9 integration). Zero regressions in Phases 1–5.
+- Static Checking: Ruff clean; strict Mypy clean across 123 source files.
+- Database Migration: `20261019_0006_privacy_gateway_shared_indicators.py` reviewed and verified.
 
 
 # -------------------------------------------------------------------------------
