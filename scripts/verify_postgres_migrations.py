@@ -11,7 +11,7 @@ from typing import Any
 
 from alembic import command
 from alembic.config import Config
-from sqlalchemy import create_engine, inspect, text
+from sqlalchemy import create_engine, inspect, pool, text
 
 
 def get_test_database_urls() -> tuple[str, str]:
@@ -56,7 +56,7 @@ def validate_migrations(sync_url: str) -> dict[str, Any]:
     alembic_cfg = Config("alembic.ini")
     alembic_cfg.set_main_option("sqlalchemy.url", sync_url)
 
-    engine = create_engine(sync_url)
+    engine = create_engine(sync_url, poolclass=pool.NullPool)
 
     report: dict[str, Any] = {
         "upgrade_head": False,
@@ -94,6 +94,8 @@ def validate_migrations(sync_url: str) -> dict[str, Any]:
         "fraud_alerts",
         "shared_indicators",
         "privacy_audit_logs",
+        "drunix_outbox_events",
+        "drunix_ledger_submissions",
     }
     missing_tables = expected_tables - table_names
     if missing_tables:
@@ -104,14 +106,40 @@ def validate_migrations(sync_url: str) -> dict[str, Any]:
     # Check unique constraint on policy_evaluations
     unique_constraints = inspector.get_unique_constraints("policy_evaluations")
     uq_names = [uq["name"] for uq in unique_constraints]
-    assert "uq_policy_evaluations_institution_idempotency" in uq_names
+    assert "uq_policy_evaluations_institution_idempotency" in uq_names, (
+        f"Missing uq_policy_evaluations_institution_idempotency in {uq_names}"
+    )
     report["constraints_verified"].append("uq_policy_evaluations_institution_idempotency")
 
     # Check unique constraint on shared_indicators
     shared_uq_constraints = inspector.get_unique_constraints("shared_indicators")
     shared_uq_names = [uq["name"] for uq in shared_uq_constraints]
-    assert "uq_shared_indicators_origin_mesh_type_policy" in shared_uq_names
+    assert "uq_shared_indicators_origin_mesh_type_policy" in shared_uq_names, (
+        f"Missing uq_shared_indicators_origin_mesh_type_policy in {shared_uq_names}"
+    )
     report["constraints_verified"].append("uq_shared_indicators_origin_mesh_type_policy")
+
+    # Check unique constraint on drunix_outbox_events
+    outbox_uq_constraints = inspector.get_unique_constraints("drunix_outbox_events")
+    outbox_uq_names = [uq["name"] for uq in outbox_uq_constraints]
+    assert "uq_drunix_outbox_institution_idempotency" in outbox_uq_names, (
+        f"Missing uq_drunix_outbox_institution_idempotency in {outbox_uq_names}"
+    )
+    report["constraints_verified"].append("uq_drunix_outbox_institution_idempotency")
+
+    # Check indexes on drunix_outbox_events
+    outbox_indexes = inspector.get_indexes("drunix_outbox_events")
+    outbox_index_names = [idx["name"] for idx in outbox_indexes]
+    for required_idx in [
+        "ix_drunix_outbox_events_status",
+        "ix_drunix_outbox_events_next_attempt_at",
+        "ix_drunix_outbox_events_institution_id",
+        "ix_drunix_outbox_events_idempotency_key",
+    ]:
+        assert required_idx in outbox_index_names, (
+            f"Missing index on drunix_outbox_events: {required_idx} (found: {outbox_index_names})"
+        )
+        report["constraints_verified"].append(required_idx)
 
     # Check indexes on spending_reservations
     indexes = inspector.get_indexes("spending_reservations")
@@ -157,11 +185,12 @@ def validate_migrations(sync_url: str) -> dict[str, Any]:
     print("[MIGRATION_CHECK] Verified unique constraints, foreign keys, and performance indexes.")
 
     # 3. Test Downgrade to 20261016_0003
+    engine.dispose()
     print("[MIGRATION_CHECK] Testing downgrade to 20261016_0003...")
     command.downgrade(alembic_cfg, "20261016_0003")
     inspector = inspect(engine)
     remaining_tables = set(inspector.get_table_names())
-    phase4_6_tables = {
+    phase4_7_tables = {
         "policies",
         "spending_reservations",
         "step_up_challenges",
@@ -170,20 +199,26 @@ def validate_migrations(sync_url: str) -> dict[str, Any]:
         "fraud_alerts",
         "shared_indicators",
         "privacy_audit_logs",
+        "drunix_outbox_events",
+        "drunix_ledger_submissions",
     }
-    assert not (
-        phase4_6_tables & remaining_tables
-    ), "Phase 4-6 tables were not dropped on downgrade!"
+    dropped_failures = phase4_7_tables & remaining_tables
+    assert not dropped_failures, (
+        f"Phase 4-7 tables were not dropped on downgrade: {dropped_failures}"
+    )
 
     report["downgrade_verified"] = True
-    print("[MIGRATION_CHECK] Downgrade verified: Phase 4-6 tables dropped cleanly.")
+    print("[MIGRATION_CHECK] Downgrade verified: Phase 4-7 tables dropped cleanly.")
 
     # 4. Re-upgrade to head
-    print("[MIGRATION_CHECK] Testing re-upgrade to head (20261019_0006)...")
+    engine.dispose()
+    print("[MIGRATION_CHECK] Testing re-upgrade to head (20261020_0007)...")
     command.upgrade(alembic_cfg, "head")
     inspector = inspect(engine)
     restored_tables = set(inspector.get_table_names())
-    assert expected_tables.issubset(restored_tables), "Tables missing after re-upgrade!"
+    assert expected_tables.issubset(restored_tables), (
+        f"Tables missing after re-upgrade: {expected_tables - restored_tables}"
+    )
     report["re_upgrade_verified"] = True
     print("[MIGRATION_CHECK] Re-upgrade verified successfully.")
 
@@ -204,7 +239,9 @@ def main() -> None:
         print(f"[REASON] {info_or_err}")
         print("\nTo validate against a live PostgreSQL test instance:")
         print("  1. Ensure an isolated test database is running (e.g. in GitHub Actions CI).")
-        print("  2. Set TEST_POSTGRES_URL=postgresql+asyncpg://<user>:<password>@<host>:<port>/<db>")
+        print(
+            "  2. Set TEST_POSTGRES_URL=postgresql+asyncpg://<user>:<password>@<host>:<port>/<db>"
+        )
         print("  3. Re-run: python scripts/verify_postgres_migrations.py")
         print("=" * 70)
         sys.exit(0)
@@ -217,7 +254,10 @@ def main() -> None:
         print(f"Constraints verified: {report['constraints_verified']}")
         print("Upgrade -> Downgrade -> Re-upgrade lifecycle: VERIFIED.")
     except Exception as err:
+        import traceback
+
         print(f"\n[MIGRATION_ERROR] Migration validation failed: {err}")
+        traceback.print_exc()
         sys.exit(1)
 
 

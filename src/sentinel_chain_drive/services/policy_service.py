@@ -1,6 +1,7 @@
 """Service orchestrating the 10-step deterministic policy evaluation pipeline and workflows."""
 
 import asyncio
+import hashlib
 import logging
 import uuid
 from datetime import UTC, datetime, timedelta
@@ -16,6 +17,7 @@ from sentinel_chain_drive.core.crypto import (
     verify_signature,
 )
 from sentinel_chain_drive.core.errors import AppException, EntityNotFoundException
+from sentinel_chain_drive.db.models.drunix_outbox import DrunixEventType
 from sentinel_chain_drive.db.models.policy import Policy
 from sentinel_chain_drive.db.models.policy_evaluation import (
     HoldStatus,
@@ -33,6 +35,7 @@ from sentinel_chain_drive.repositories.audit_repository import AuditRepository
 from sentinel_chain_drive.repositories.authorization_repository import AuthorizationRepository
 from sentinel_chain_drive.repositories.capability_repository import CapabilityRepository
 from sentinel_chain_drive.repositories.credential_repository import CredentialRepository
+from sentinel_chain_drive.repositories.drunix_outbox_repository import DrunixOutboxRepository
 from sentinel_chain_drive.repositories.institution_repository import InstitutionRepository
 from sentinel_chain_drive.repositories.policy_evaluation_repository import (
     PolicyEvaluationRepository,
@@ -493,9 +496,7 @@ class PolicyService:
             req.transaction.destination_institution_code
         )
         if dest_inst is not None:
-            acct = await self.account_repo.get_by_number(
-                req.transaction.destination_account_number
-            )
+            acct = await self.account_repo.get_by_number(req.transaction.destination_account_number)
             if acct is not None and acct.institution_id == dest_inst.id:
                 destination_account = acct
 
@@ -648,6 +649,35 @@ class PolicyService:
                 },
             )
         )
+        # DRUNIX Transactional Outbox Integration (Phase 7):
+        # External delivery MUST NEVER override internal DECLINE, HOLD, or unresolved STEP_UP.
+        # Only eligible, fully authorized (ALLOW) operations create outbox submission events.
+        if eval_result.outcome == PolicyOutcome.ALLOW:
+            outbox_repo = DrunixOutboxRepository(self.session)
+            outbox_payload = {
+                "decision_id": str(eval_record.id),
+                "agent_id": str(agent.id),
+                "institution_id": str(req.institution_id),
+                "decision": PolicyOutcome.ALLOW.value,
+                "transaction_intent_hash": tx_hash,
+                "amount": str(req.transaction.amount),
+                "currency": req.transaction.currency,
+                "evaluated_at": now.isoformat(),
+            }
+            attestation_commitment = hashlib.sha256(
+                f"{eval_record.id}:{agent.id}:ALLOW:{tx_hash}".encode()
+            ).hexdigest()
+            await outbox_repo.create_event(
+                institution_id=req.institution_id,
+                event_type=DrunixEventType.AUTH_ATTESTATION,
+                aggregate_type="POLICY_EVALUATION",
+                aggregate_id=eval_record.id,
+                idempotency_key=f"drunix:auth:{eval_record.id}",
+                commitment_hash=attestation_commitment,
+                payload=outbox_payload,
+                correlation_id=correlation_id,
+            )
+
         await self.session.flush()
 
         return self._build_decision_response(eval_record, step_up_challenge, transaction_hold)
@@ -915,6 +945,30 @@ class PolicyService:
             if eval_rec is not None:
                 eval_rec.decision = PolicyOutcome.ALLOW
                 eval_rec.reason_codes = ["STEP_UP_APPROVED_BY_SUPERVISOR"]
+                outbox_repo = DrunixOutboxRepository(self.session)
+                outbox_payload = {
+                    "decision_id": str(eval_rec.id),
+                    "challenge_id": str(ch.id),
+                    "initiating_agent_id": str(ch.initiating_agent_id),
+                    "approver_id": data.approver_id,
+                    "institution_id": str(ch.institution_id),
+                    "decision": PolicyOutcome.ALLOW.value,
+                    "transaction_intent_hash": ch.transaction_intent_hash,
+                    "evaluated_at": now.isoformat(),
+                }
+                attestation_commitment = hashlib.sha256(
+                    f"{eval_rec.id}:{ch.initiating_agent_id}:ALLOW:{ch.transaction_intent_hash}".encode()
+                ).hexdigest()
+                await outbox_repo.create_event(
+                    institution_id=ch.institution_id,
+                    event_type=DrunixEventType.AUTH_ATTESTATION,
+                    aggregate_type="POLICY_EVALUATION",
+                    aggregate_id=eval_rec.id,
+                    idempotency_key=f"drunix:auth:{eval_rec.id}",
+                    commitment_hash=attestation_commitment,
+                    payload=outbox_payload,
+                    correlation_id=None,
+                )
             if ch.transaction_id is not None:
                 await self._update_linked_transaction_status(
                     transaction_id=ch.transaction_id,
@@ -1018,6 +1072,29 @@ class PolicyService:
             if eval_rec is not None:
                 eval_rec.decision = PolicyOutcome.ALLOW
                 eval_rec.reason_codes = ["HOLD_RELEASED_BY_INVESTIGATOR"]
+                outbox_repo = DrunixOutboxRepository(self.session)
+                outbox_payload = {
+                    "decision_id": str(eval_rec.id),
+                    "hold_id": str(h.id),
+                    "resolved_by": data.resolved_by,
+                    "institution_id": str(h.institution_id),
+                    "decision": PolicyOutcome.ALLOW.value,
+                    "transaction_intent_hash": h.transaction_intent_hash,
+                    "evaluated_at": now.isoformat(),
+                }
+                attestation_commitment = hashlib.sha256(
+                    f"{eval_rec.id}:HOLD_RELEASED:ALLOW:{h.transaction_intent_hash}".encode()
+                ).hexdigest()
+                await outbox_repo.create_event(
+                    institution_id=h.institution_id,
+                    event_type=DrunixEventType.AUTH_ATTESTATION,
+                    aggregate_type="POLICY_EVALUATION",
+                    aggregate_id=eval_rec.id,
+                    idempotency_key=f"drunix:auth:{eval_rec.id}",
+                    commitment_hash=attestation_commitment,
+                    payload=outbox_payload,
+                    correlation_id=None,
+                )
             if h.transaction_id is not None:
                 await self._update_linked_transaction_status(
                     transaction_id=h.transaction_id,

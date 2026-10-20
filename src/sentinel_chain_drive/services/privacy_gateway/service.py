@@ -5,6 +5,7 @@ anti-enumeration query processing, pseudonym handling, inbound indicator validat
 and comprehensive privacy audit logging.
 """
 
+import hashlib
 import logging
 import uuid
 from datetime import UTC, datetime, timedelta
@@ -17,6 +18,7 @@ from sentinel_chain_drive.db.models.alert import (
     AlertSeverity,
     DetectorType,
 )
+from sentinel_chain_drive.db.models.drunix_outbox import DrunixEventType
 from sentinel_chain_drive.db.models.privacy_audit import (
     PrivacyAction,
     PrivacyOutcome,
@@ -29,6 +31,7 @@ from sentinel_chain_drive.db.models.shared_indicator import (
 )
 from sentinel_chain_drive.repositories.account_repository import AccountRepository
 from sentinel_chain_drive.repositories.alert_repository import AlertRepository
+from sentinel_chain_drive.repositories.drunix_outbox_repository import DrunixOutboxRepository
 from sentinel_chain_drive.repositories.institution_repository import (
     InstitutionRepository,
 )
@@ -178,6 +181,30 @@ class PrivacyGatewayService:
                 },
                 correlation_id=correlation_id,
             )
+            if is_new:
+                outbox_repo = DrunixOutboxRepository(self.session)
+                outbox_payload = {
+                    "indicator_id": str(persisted.id),
+                    "indicator_code": persisted.indicator_code,
+                    "pseudonymous_mesh_id": persisted.pseudonymous_mesh_id,
+                    "indicator_type": persisted.indicator_type.value,
+                    "severity": persisted.severity.value,
+                    "originating_institution_id": str(caller_institution_id),
+                }
+                commitment_hash = hashlib.sha256(
+                    f"{persisted.id}:{persisted.pseudonymous_mesh_id}:{persisted.indicator_type.value}".encode()
+                ).hexdigest()
+                await outbox_repo.create_event(
+                    institution_id=caller_institution_id,
+                    event_type=DrunixEventType.FRAUD_INDICATOR,
+                    aggregate_type="SHARED_INDICATOR",
+                    aggregate_id=persisted.id,
+                    idempotency_key=f"drunix:indicator:{persisted.id}",
+                    commitment_hash=commitment_hash,
+                    payload=outbox_payload,
+                    correlation_id=correlation_id,
+                )
+
             await self.session.commit()
             return SharedIndicatorResponse.model_validate(persisted)
 
@@ -245,9 +272,7 @@ class PrivacyGatewayService:
                         action=PrivacyAction.REJECT,
                         outcome=PrivacyOutcome.VALIDATION_FAILED,
                         details={
-                            "reason": (
-                                "Account number does not match primary account on alert"
-                            )
+                            "reason": ("Account number does not match primary account on alert")
                         },
                         correlation_id=correlation_id,
                     )
@@ -500,11 +525,7 @@ class PrivacyGatewayService:
             limit=20,
         )
 
-        events = [
-            PrivacyAuditEventResponse.model_validate(log)
-            for log in recent_logs
-        ]
-
+        events = [PrivacyAuditEventResponse.model_validate(log) for log in recent_logs]
 
         return PrivacyAuditSummaryResponse(
             institution_id=institution_id,

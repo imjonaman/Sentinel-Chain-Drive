@@ -8,7 +8,7 @@ from sentinel_chain_drive.db.base import Base
 
 
 def test_metadata_tables_match_domain_models() -> None:
-    """Verify that SQLAlchemy Base.metadata contains all 18 registered domain tables."""
+    """Verify that SQLAlchemy Base.metadata contains all 20 registered domain tables."""
     expected_tables = {
         "institutions",
         "accounts",
@@ -28,6 +28,8 @@ def test_metadata_tables_match_domain_models() -> None:
         "fraud_alerts",
         "shared_indicators",
         "privacy_audit_logs",
+        "drunix_outbox_events",
+        "drunix_ledger_submissions",
     }
     assert set(Base.metadata.tables.keys()) == expected_tables
 
@@ -36,9 +38,9 @@ def test_migration_lifecycle_upgrade_downgrade_reupgrade(tmp_path: Path) -> None
     """Test full migration lifecycle against an isolated database:
 
     1. Base to head upgrade.
-    2. Verification of all 18 tables, indexes, constraints, and foreign keys.
+    2. Verification of all 20 tables, indexes, constraints, and foreign keys.
     3. Downgrade to Phase 3 (20261016_0003).
-    4. Re-upgrade to head (20261019_0006).
+    4. Re-upgrade to head (20261020_0007).
     """
     db_file = tmp_path / "test_migration_lifecycle.db"
     sync_url = f"sqlite:///{db_file}"
@@ -46,8 +48,10 @@ def test_migration_lifecycle_upgrade_downgrade_reupgrade(tmp_path: Path) -> None
     report = validate_migrations(sync_url)
 
     assert report["upgrade_head"] is True
-    assert len(report["tables_verified"]) == 18
+    assert len(report["tables_verified"]) == 20
     assert "capabilities" in report["tables_verified"]
     assert "audit_logs" in report["tables_verified"]
+    assert "drunix_outbox_events" in report["tables_verified"]
+    assert "drunix_ledger_submissions" in report["tables_verified"]
     assert report["downgrade_verified"] is True
     assert report["re_upgrade_verified"] is True

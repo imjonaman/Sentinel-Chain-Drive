@@ -364,8 +364,7 @@ class RapidPassThroughDetector(BaseDetector):
 
                     node_attrs = graph.nodes[node]
                     institution_id = (
-                        node_attrs.get("institution_id")
-                        or in_tx.destination_institution_id
+                        node_attrs.get("institution_id") or in_tx.destination_institution_id
                     )
 
                     # Scoring: Base 75 for rapid transit mule

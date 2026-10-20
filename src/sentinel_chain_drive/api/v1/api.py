@@ -7,6 +7,7 @@ from sentinel_chain_drive.api.v1.endpoints import (
     agents,
     capabilities,
     credentials,
+    drunix,
     institutions,
     mulechain,
     policies,
@@ -27,6 +28,6 @@ api_v1_router.include_router(credentials.authorizations_router)
 api_v1_router.include_router(policies.router)
 api_v1_router.include_router(mulechain.router)
 api_v1_router.include_router(privacy.router)
+api_v1_router.include_router(drunix.router)
 
 __all__ = ["api_v1_router"]
-
