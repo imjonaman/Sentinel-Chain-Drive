@@ -63,4 +63,4 @@ jobs:
           POSTGRES_USER: sentinel_test_user
           POSTGRES_PASSWORD: sentinel_test_password
         run: |
-          pytest -v
+          python -m pytest -v

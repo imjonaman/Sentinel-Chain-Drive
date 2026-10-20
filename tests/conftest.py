@@ -14,8 +14,8 @@ from sqlalchemy.ext.asyncio import (
 from sqlalchemy.pool import StaticPool
 
 # Ensure test environment variable defaults before settings load
-os.environ["ENVIRONMENT"] = "testing"
-os.environ["POSTGRES_PASSWORD"] = "test_only_mock_password"
+os.environ.setdefault("ENVIRONMENT", "testing")
+os.environ.setdefault("POSTGRES_PASSWORD", "test_only_mock_password")
 
 from pydantic import SecretStr
 
