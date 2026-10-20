@@ -461,3 +461,64 @@ class TestDetectorConfigurations:
             CircularLayeringConfig(min_cycle_length=5, max_cycle_length=3)
         with pytest.raises(ValueError, match="cannot exceed 10"):
             CircularLayeringConfig(max_cycle_length=15)
+
+
+class TestDetectorModuleImportAndTypeAnnotations:
+    """Regression test suite for NetworkX type annotations and module imports."""
+
+    def test_detectors_module_import_and_type_hints(self) -> None:
+        """Verify detectors module imports without TypeError: MultiDiGraph not subscriptable."""
+        import importlib
+        import typing
+
+        import networkx as nx
+
+        import sentinel_chain_drive.services.mulechain.detectors as det_module
+
+        # Ensure module is cleanly reloaded and checked
+        reloaded = importlib.reload(det_module)
+        assert reloaded is not None
+
+        detector_classes = [
+            reloaded.BaseDetector,
+            reloaded.FanInDetector,
+            reloaded.FanOutDetector,
+            reloaded.RapidPassThroughDetector,
+            reloaded.CircularLayeringDetector,
+        ]
+
+        for cls in detector_classes:
+            hints = typing.get_type_hints(cls.detect)
+            assert "graph" in hints
+            assert hints["graph"] is nx.MultiDiGraph
+
+    def test_graph_builder_module_import_and_type_hints(self) -> None:
+        """Verify graph_builder module imports and type hints resolve correctly."""
+        import importlib
+        import typing
+
+        import networkx as nx
+
+        import sentinel_chain_drive.services.mulechain.graph_builder as gb_module
+
+        reloaded = importlib.reload(gb_module)
+        assert reloaded is not None
+
+        hints = typing.get_type_hints(reloaded.TransactionGraphBuilder.build_graph)
+        assert hints["return"] is nx.MultiDiGraph
+
+    def test_empty_and_boundary_graphs_run_all_detectors(self) -> None:
+        """Verify detectors accept empty concrete MultiDiGraph without runtime errors."""
+        import networkx as nx
+
+        empty_graph: nx.MultiDiGraph = nx.MultiDiGraph()  # type: ignore[type-arg]
+        detectors = [
+            FanInDetector("USD"),
+            FanOutDetector("USD"),
+            RapidPassThroughDetector("USD"),
+            CircularLayeringDetector("USD"),
+        ]
+        for detector in detectors:
+            findings = detector.detect(empty_graph)
+            assert findings == []
+

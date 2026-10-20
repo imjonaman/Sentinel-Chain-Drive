@@ -1,9 +1,10 @@
 """Topological fraud pattern detectors for MuleChain engine."""
 
+from __future__ import annotations
+
 import uuid
 from datetime import timedelta
 from decimal import Decimal
-from typing import Any
 
 import networkx as nx
 
@@ -28,7 +29,7 @@ class BaseDetector:
     def __init__(self, currency: str) -> None:
         self.currency = currency.upper()
 
-    def detect(self, graph: nx.MultiDiGraph[Any]) -> list[DetectorFinding]:
+    def detect(self, graph: nx.MultiDiGraph) -> list[DetectorFinding]:  # type: ignore[type-arg]
         raise NotImplementedError
 
 
@@ -39,7 +40,7 @@ class FanInDetector(BaseDetector):
         super().__init__(currency)
         self.config = config or FanInConfig()
 
-    def detect(self, graph: nx.MultiDiGraph[Any]) -> list[DetectorFinding]:
+    def detect(self, graph: nx.MultiDiGraph) -> list[DetectorFinding]:  # type: ignore[type-arg]
         findings: list[DetectorFinding] = []
         window_seconds = self.config.window_seconds
         min_sources = self.config.min_sources
@@ -175,7 +176,7 @@ class FanOutDetector(BaseDetector):
         super().__init__(currency)
         self.config = config or FanOutConfig()
 
-    def detect(self, graph: nx.MultiDiGraph[Any]) -> list[DetectorFinding]:
+    def detect(self, graph: nx.MultiDiGraph) -> list[DetectorFinding]:  # type: ignore[type-arg]
         findings: list[DetectorFinding] = []
         window_seconds = self.config.window_seconds
         min_destinations = self.config.min_destinations
@@ -303,7 +304,7 @@ class RapidPassThroughDetector(BaseDetector):
         super().__init__(currency)
         self.config = config or RapidPassThroughConfig()
 
-    def detect(self, graph: nx.MultiDiGraph[Any]) -> list[DetectorFinding]:
+    def detect(self, graph: nx.MultiDiGraph) -> list[DetectorFinding]:  # type: ignore[type-arg]
         findings: list[DetectorFinding] = []
         max_delta_seconds = self.config.max_delta_seconds
         min_ratio = Decimal(str(self.config.min_pass_through_ratio))
@@ -445,14 +446,14 @@ class CircularLayeringDetector(BaseDetector):
         super().__init__(currency)
         self.config = config or CircularLayeringConfig()
 
-    def detect(self, graph: nx.MultiDiGraph[Any]) -> list[DetectorFinding]:
+    def detect(self, graph: nx.MultiDiGraph) -> list[DetectorFinding]:  # type: ignore[type-arg]
         findings: list[DetectorFinding] = []
         min_len = self.config.min_cycle_length
         max_len = self.config.max_cycle_length
         window_seconds = self.config.window_seconds
 
         # Project to simple DiGraph to find cycles safely without multi-edge explosion
-        simple_digraph: nx.DiGraph[Any] = nx.DiGraph()
+        simple_digraph: nx.DiGraph = nx.DiGraph()  # type: ignore[type-arg]
         for u, v in graph.edges():
             if u == v:
                 continue

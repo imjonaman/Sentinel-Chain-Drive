@@ -1,9 +1,10 @@
 """Graph model construction for transaction fund-flow analysis using NetworkX."""
 
+from __future__ import annotations
+
 from collections.abc import Sequence
 from datetime import UTC, datetime
 from decimal import Decimal
-from typing import Any
 
 import networkx as nx
 
@@ -40,7 +41,7 @@ class TransactionGraphBuilder:
         accounts: Sequence[Account] | None = None,
         from_time: datetime | None = None,
         to_time: datetime | None = None,
-    ) -> nx.MultiDiGraph[Any]:
+    ) -> nx.MultiDiGraph:  # type: ignore[type-arg]
         """Construct a NetworkX MultiDiGraph preserving parallel edges and enforcing invariants.
 
         Invariants:
@@ -50,7 +51,7 @@ class TransactionGraphBuilder:
         3. Deterministic construction: sorted by timestamp then transaction ID.
         4. Time-bounded: edges strictly within [from_time, to_time].
         """
-        graph: nx.MultiDiGraph[Any] = nx.MultiDiGraph()
+        graph: nx.MultiDiGraph = nx.MultiDiGraph()  # type: ignore[type-arg]
         from_time_utc = _ensure_utc(from_time)
         to_time_utc = _ensure_utc(to_time)
 
