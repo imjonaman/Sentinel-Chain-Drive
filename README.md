@@ -6,9 +6,9 @@ Sentinel Chain Drive is an enterprise security and intelligence platform designe
 
 ---
 
-## Current Status: Phase 6 Complete (Audited: 2026-10-19)
+## Current Status: Phase 7 Complete (Audited: 2026-10-20)
 
-Sentinel Chain Drive is developed under an explicit 13-phase architectural roadmap defined in [`build_order.txt`](file:///c:/Users/imjon/OneDrive/Documents/GitHub/Sentinel-Chain-Drive/build_order.txt). As of the latest repository audit on **2026-10-19**, **Phases 1 through 6 are COMPLETE and VERIFIED**, with 187 automated unit and integration tests passing.
+Sentinel Chain Drive is developed under an explicit 13-phase architectural roadmap defined in [`build_order.txt`](file:///c:/Users/imjon/OneDrive/Documents/GitHub/Sentinel-Chain-Drive/build_order.txt). As of the latest repository audit on **2026-10-20**, **Phases 1 through 7 are COMPLETE and VERIFIED**, with 207 automated unit and integration tests passing.
 
 ### Master Phase Status Summary
 
@@ -20,7 +20,7 @@ Sentinel Chain Drive is developed under an explicit 13-phase architectural roadm
 | **4** | **Deterministic Policy Engine** | **COMPLETE** | 7-tier precedence evaluation producing `ALLOW`, `STEP_UP`, `HOLD`, or `DECLINE`, spending reservations for concurrency, dual-control, policy versioning. |
 | **5** | **MuleChain - Graph-Based Fraud Intelligence** | **COMPLETE** | In-memory NetworkX directed multigraph (`MultiDiGraph`), 4 topological detectors (fan-in, fan-out, rapid pass-through, circular layering), explainable 0–100 risk scoring, idempotent SHA-256 fingerprint deduplication, Phase 4 Policy Engine bridge. |
 | **6** | **Privacy Gateway & Cross-Institution Intelligence** | **COMPLETE** | Keyed HMAC-SHA256 pseudonymization (`MeshID`) with purpose-binding and epoch rotation, field-level disclosure policies & prohibited-field rejection, shared indicator registry, anti-enumeration rate limiting, policy engine risk bridge. |
-| **7** | **DRUNIX Ledger Integration** | **PARTIALLY COMPLETE** | Abstract `DRUNIXAdapter` and in-memory `MockDRUNIXAdapter` verified; live RPC adapter, mTLS, and ledger submission queue remain unbuilt. |
+| **7** | **DRUNIX Ledger Integration** | **COMPLETE** | Transactional Outbox pattern (`drunix_outbox_events`), ledger submission tracking (`drunix_ledger_submissions`), resilient asynchronous worker with exponential backoff & jitter, 3-state circuit breaker, `MockDRUNIXAdapter` simulator with 10 deterministic failure modes, stale lock recovery, reconciliation loop, status API, and Alembic migration `20261020_0007`. Live RPC network connection isolated pending external protocol specifications. |
 | **8** | **Event Processing & System Coordination** | **NOT STARTED** | Transactional Outbox pattern, RabbitMQ topic exchange topology, dead-letter queues, idempotent event consumers. |
 | **9** | **Investigation, Case Management, & Recovery Orchestration** | **NOT STARTED** | Alert triage API, fraud case management, evidentiary audit dossier compiler, simulated recovery orchestration. |
 | **10** | **Frontend Dashboard & Operator Experience** | **NOT STARTED** | React 18/19, TypeScript, Vite SPA, interactive Cytoscape.js transaction graph visualization, operator queues, policy console. |
@@ -28,11 +28,11 @@ Sentinel Chain Drive is developed under an explicit 13-phase architectural roadm
 | **12** | **Controlled Pilot Readiness** | **NOT STARTED** | Pilot integration specifications (ISO 20022), disaster recovery runbooks (PITR drills), institutional KMS guides. |
 | **13** | **Production Deployment & Multi-Institution Scale** | **NOT STARTED** | Helm charts, Kubernetes HPA, OpenTelemetry distributed tracing, Prometheus metrics export, SIEM log forwarding, database RLS. |
 
-*Detailed audit evidence, verification logs, and acceptance criteria are documented in [`docs/phase_status_audit.md`](file:///c:/Users/imjon/OneDrive/Documents/GitHub/Sentinel-Chain-Drive/docs/phase_status_audit.md).*
+*Detailed audit evidence, verification logs, and acceptance criteria are documented in [`docs/phase_status_audit.md`](file:///c:/Users/imjon/OneDrive/Documents/GitHub/Sentinel-Chain-Drive/docs/phase_status_audit.md) and [`docs/drunix_integration_spec.md`](file:///c:/Users/imjon/OneDrive/Documents/GitHub/Sentinel-Chain-Drive/docs/drunix_integration_spec.md).*
 
 ---
 
-## Implemented Architectural Capabilities (Phases 1–6)
+## Implemented Architectural Capabilities (Phases 1–7)
 
 ### Phase 1: Foundation & Core Infrastructure
 - **Enterprise Web Framework:** FastAPI running on Starlette with asynchronous request handling.
@@ -109,6 +109,21 @@ Sentinel Chain Drive is developed under an explicit 13-phase architectural roadm
 - **Phase 4 Policy Engine Integration Bridge:** Translates active cross-institution indicators into deterministic `RiskSignals` telemetry (0.90 + review flag for `CRITICAL`, 0.75 for `HIGH`, explicit `NO_MATCH` for clean accounts, explicit `UNAVAILABLE` fallback for gateway outages) driving deterministic `HOLD`/`STEP_UP` without weakening policy engine authority.
 - **Atomic Privacy Audit Logging (`PrivacyAuditLog`):** Transactionally records publication, query, revocation, withdrawal, and rejected unauthorized attempts with sensitive data redaction.
 
+### Phase 7: DRUNIX Ledger Integration & Transactional Outbox
+- **Transactional Outbox Pattern (`drunix_outbox_events`):** Atomic dual-write pattern where ledger-bound events (such as authorization attestations and shared fraud indicators) are persisted within the exact same database transaction as the operational state change. Guarantees at-least-once delivery with zero dual-write vulnerabilities or premature synchronous ledger coupling.
+- **Resilient Asynchronous Worker (`DrunixOutboxWorker`):** Background processor that polls pending outbox events using PostgreSQL concurrency controls (`SELECT ... FOR UPDATE SKIP LOCKED` / `LIMIT`). Enforces exponential backoff with full jitter, configurable batch sizing, and per-event maximum retry caps (transitioning to `FAILED` dead-letter status upon terminal exhaust).
+- **Three-State Circuit Breaker (`CircuitBreaker`):** Fail-safe concurrency control guarding all external ledger calls with strict state transitions (`CLOSED` &rarr; `OPEN` &rarr; `HALF_OPEN`). Configurable failure thresholds (default 5 consecutive errors) and recovery cooldown windows prevent worker exhaustion and cascading failures during ledger outages.
+- **Enterprise Error Taxonomy & Classification:**
+  - `DRUNIXTransientError`: Network timeouts, socket resets, 503 throttling &rarr; triggers worker exponential backoff and retry.
+  - `DRUNIXTerminalError`: Signature rejection, schema mismatch, malicious payload &rarr; marks outbox event `FAILED` without futile retries.
+  - `DRUNIXUncertainOutcomeError`: Timeout after submission before receipt confirmation &rarr; triggers dual-check reconciliation.
+  - `DRUNIXMalformedResponseError`: Unparseable receipt structure &rarr; recorded in submission history for manual operator audit.
+- **Mock Simulator with 10 Deterministic Modes (`MockDRUNIXAdapter`):** Configurable in-memory simulation engine for CI and local development testing, supporting: normal operation, transient network timeouts, rate limit throttling, node down, malformed receipts, terminal payload rejection, duplicate submission detection, block height drift, uncertain timeout states, and latency injection.
+- **Stale Lock Recovery & Ledger Reconciliation:** Automated periodic reaper that reclaims orphaned `IN_PROGRESS` events abandoned by crashed worker processes. Before re-dispatching, queries the ledger adapter to verify if a prior submission actually committed, preventing duplicate ledger entries.
+- **Immutable Ledger Submission Audit Trail (`drunix_ledger_submissions`):** Records every submission attempt with timestamp, latency (ms), status, receipt hash, block height, and error classification, enabling cryptographic verification of external ledger commitments.
+- **Health & Monitoring Telemetry API:** Dedicated monitoring endpoint (`GET /api/v1/drunix/status`) exposing worker heartbeat, queue depth breakdown by status (`PENDING`, `IN_PROGRESS`, `COMPLETED`, `FAILED`), circuit breaker state and failure counters, and active mock adapter configuration.
+- **Database Schema Migration (`20261020_0007`):** Alembic migration establishing `drunix_outbox_events` and `drunix_ledger_submissions` tables with hardened $\le 63$-character foreign keys and compound indexes for high-throughput polling.
+
 ---
 
 ## Technology Stack
@@ -158,20 +173,29 @@ Sentinel Chain Drive is developed under an explicit 13-phase architectural roadm
        |     - Topological Anomaly Detectors
        |     - Idempotent Alert Persistence (fraud_alerts)
        |
-       +---> [Operational PostgreSQL Datastore]
+       +---> [Operational PostgreSQL Datastore (20 Tables)]
        |     - Authoritative State (Institutions, Accounts, Tx, Policies)
        |     - Fraud Alerts & Shared Indicators
+       |     - Transactional Outbox Events (drunix_outbox_events)
+       |     - Ledger Submissions History (drunix_ledger_submissions)
        |     - Atomic Audit Log & Privacy Audit Trails
        |
-       +---> [DRUNIX Adapter (Off-Chain Boundary)]
-             - MockDRUNIXAdapter (In-memory development contract)
+       +---> [Asynchronous DRUNIX Outbox Worker]
+             | (Polls with SELECT ... FOR UPDATE SKIP LOCKED)
+             | (Circuit Breaker: CLOSED / OPEN / HALF_OPEN)
+             | (Exponential Backoff + Full Jitter)
+             v
+       [DRUNIX Adapter Boundary (Off-Chain)]
+             - MockDRUNIXAdapter (10 deterministic failure/edge modes)
+             - Abstract DRUNIXAdapter (Specification ready for live RPC)
 ```
 
 ### Critical Trust Boundaries:
-1. **Local Real-Time Authorization vs. Asynchronous Fraud Analysis:** Real-time transaction authorization (evaluating AgentID credentials, account flags, and capability limits) executes strictly on the synchronous path. Graph analysis (MuleChain, Phase 5) and ledger commitments (DRUNIX, Phase 7) operate asynchronously to prevent network/ledger latency from stalling payment execution.
+1. **Local Real-Time Authorization vs. Asynchronous Outbox & Analysis:** Real-time transaction authorization (evaluating AgentID credentials, account flags, and capability limits) executes strictly on the synchronous path. Outbox events are committed transactionally with the business state change, while background worker dispatch (DRUNIX, Phase 7) and topological graph analysis (MuleChain, Phase 5) operate asynchronously to prevent network/ledger latency from stalling payment execution.
 2. **Development Simulation Boundary:** HTTP headers like `X-Institution-ID` and simulated roles are development scaffolding to test tenant boundaries in local simulation. They **do not** constitute production-grade identity assurance or authentication (which requires mutual TLS / OIDC in enterprise deployment).
 3. **Information Shielding & Privacy Preservation:** Public evaluation responses return coarse reason codes to avoid exposing internal security rules. Cross-institution intelligence is strictly sanitized: raw customer names, account numbers, credentials, and full transaction histories are prohibited and rejected. Pseudonyms are purpose-bound and epoch-rotated; bulk scraping is denied.
-4. **Authoritative Datastore:** PostgreSQL is the sole authoritative operational store. External distributed ledgers (DRUNIX) serve solely for immutable state attestation and cross-bank proofs.
+4. **Authoritative Datastore:** PostgreSQL is the sole authoritative operational store (20 tables). External distributed ledgers (DRUNIX) serve solely for immutable state attestation and cross-bank proofs.
+5. **Ledger Decoupling & Wire Protocol Isolation:** The DRUNIX interface is backed by a hardened `MockDRUNIXAdapter` simulator. Live network connectivity is cleanly decoupled and documented in [`docs/drunix_integration_spec.md`](file:///c:/Users/imjon/OneDrive/Documents/GitHub/Sentinel-Chain-Drive/docs/drunix_integration_spec.md) pending authoritative wire protocol specifications from external ledger operators.
 
 ---
 
@@ -370,6 +394,14 @@ curl -X POST "http://localhost:8000/api/v1/privacy-gateway/indicators/query" \
 ```
 *Response: `HTTP 200 OK` with matching authorized indicators and remaining rate limit quota.*
 
+### 7. Inspect DRUNIX Outbox & Circuit Breaker Status
+Inspect asynchronous ledger worker health, queue depth, and circuit breaker metrics:
+```bash
+curl -X GET "http://localhost:8000/api/v1/drunix/status" \
+  -H "Accept: application/json"
+```
+*Response: `HTTP 200 OK` with worker status, queue depth breakdown (`pending`, `in_progress`, `completed`, `failed`), circuit breaker state (`CLOSED`), and active mock adapter configuration.*
+
 ---
 
 ## API Endpoints Reference
@@ -449,6 +481,11 @@ curl -X POST "http://localhost:8000/api/v1/privacy-gateway/indicators/query" \
 | `POST` | `/api/v1/privacy-gateway/indicators/{id}/revoke` | Revoke or withdraw a published indicator (restricted to originator) |
 | `GET` | `/api/v1/privacy-gateway/audit-summary` | Retrieve privacy compliance audit summary statistics for caller institution |
 
+### DRUNIX Ledger & Outbox (`/api/v1/drunix`)
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/api/v1/drunix/status` | Retrieve DRUNIX adapter status, circuit breaker state, worker health, and outbox queue metrics |
+
 ---
 
 ## Verification & Testing
@@ -458,13 +495,14 @@ Execute the automated test suite with pytest:
 ```powershell
 pytest
 ```
-*Current Result: **187 passed / 187 tests (100%)** in ~32s across unit and integration suites:*
+*Current Result: **207 passed / 207 tests (100%)** in ~35s across unit and integration suites:*
 - **Phase 1 Foundation:** 17 tests (configuration, correlation logging, health probes, errors)
 - **Phase 2 Banking Domain:** 23 tests (institutions, accounts, transactions, decimal safety, idempotency)
 - **Phase 3 AgentID:** 35 tests (Ed25519 signing, intent tampering, replay, clock skew, capabilities)
 - **Phase 4 Policy Engine:** 38 tests (4 outcomes, precedence rules, spending reservations, step-up, holds, live concurrency)
 - **Phase 5 MuleChain:** 31 tests (graph construction, currency isolation, status filtering, 4 detectors, explainable scoring, idempotent alerts, multi-tenant scoping, policy engine integration)
 - **Phase 6 Privacy Gateway:** 43 tests (purpose-bound MeshID, canonicalization, epoch rotation, dual recursive allowlists, case variant detection, rate limiting, recipient scoping, revocation integrity, policy bridge)
+- **Phase 7 DRUNIX Integration & Outbox:** 20 tests (outbox lifecycle, worker backoff, circuit breaker state transitions, deterministic mock failure modes, live PostgreSQL concurrency & lock isolation, schema migrations)
 
 ### Code Quality & Static Analysis
 ```powershell
@@ -478,7 +516,7 @@ ruff check .
 mypy src tests
 
 # Verify migration SQL generation (Alembic)
-alembic upgrade --sql 20261019_0005:20261019_0006
+alembic upgrade --sql 20261019_0006:20261020_0007
 ```
 
 ---
@@ -489,20 +527,20 @@ alembic upgrade --sql 20261019_0005:20261019_0006
 2. **Deterministic Financial Math:** Amounts are stored as exact scale decimals (`Numeric(18, 4)`) and serialized as string representations to avoid floating-point loss in JSON.
 3. **No Premature Settlement:** Submissions enter `PENDING_AUTHORIZATION`. The policy engine produces `ALLOW`, `STEP_UP`, `HOLD`, or `DECLINE`. Authorization allows transaction settlement to proceed, but does not settle or execute funds directly.
 4. **Development Authentication Boundary:** `X-Institution-ID` headers are simulation test fixtures and must not be treated as production identity tokens. Production deployment will require mutual TLS (mTLS) and OIDC integration.
-5. **No Live Blockchain Ledger:** The `MockDRUNIXAdapter` operates entirely in memory to decouple Phase 1–6 local development from unverified distributed ledger dependencies.
+5. **Ledger Boundary & Mock Simulator:** The DRUNIX integration implements an enterprise transactional outbox pattern and circuit breaker backed by `MockDRUNIXAdapter`. Live RPC ledger network connectivity is decoupled and documented in [`docs/drunix_integration_spec.md`](file:///c:/Users/imjon/OneDrive/Documents/GitHub/Sentinel-Chain-Drive/docs/drunix_integration_spec.md) pending authoritative wire protocol specifications from external ledger operators.
 6. **Concurrency Double-Spend Protection:** Pending transactions are protected by atomic `spending_reservations` records and database row locks, ensuring concurrent authorizations cannot exceed 24-hour capability bounds.
 7. **Graph Scalability & In-Memory Constraints:** MuleChain currently runs NetworkX in-memory for deterministic localized graph analysis. Distributed graph databases (e.g. Neo4j) or message brokers (RabbitMQ) will be introduced in subsequent phases as specified in `build_order.txt`.
 8. **Cross-Institution Privacy Preservation:** Keyed HMAC-SHA256 pseudonymization (`MeshID`) with purpose-scoping and epoch rotation prevents rainbow-table inversion and cross-purpose correlation. Outbound intelligence enforces dual recursive allowlists, coarse volume tiers, and automatic PII/account number redaction. Bulk scraping is strictly forbidden.
 9. **Revocation Integrity & Immutability:** Revoked indicators cannot be silently resurrected under duplicate publication (`HTTP 409 Conflict`). Modifying findings for a revoked indicator requires explicitly advancing the `sharing_policy_version`.
 10. **Fail-Closed Key Lifecycle:** Missing or unknown epoch keys fail closed immediately with `KeyError` without unsafe random fallback key generation.
-11. **Production-Readiness Boundary:** While development exit criteria for Phases 1–6 are 100% satisfied, this system is a development prototype and is **not** currently certified for production financial workloads (pending distributed messaging, Kubernetes orchestration, and formal security audits in Phases 8–13).
+11. **Production-Readiness Boundary:** While development exit criteria for Phases 1–7 are 100% satisfied, this system is a development prototype and is **not** currently certified for production financial workloads (pending distributed messaging, Kubernetes orchestration, and formal security audits in Phases 8–13).
 
 ---
 
 ## Next Recommended Phase
 
-**Phase 7: DRUNIX Ledger Integration**
-- **Prerequisites Status:** Fully satisfied. Phase 1 provides the abstract `DRUNIXAdapter` interface and `MockDRUNIXAdapter` contract; Phase 6 provides sanitized privacy gateway indicators; Phase 4 & 5 provide deterministic policy evaluations and fraud alerts.
-- **Upcoming Scope:** Produce formal `docs/drunix_integration_spec.md`, implement live RPC adapter with mutual TLS (mTLS), create `ledger_submissions` persistence queue, and build asynchronous reconciliation worker.
+**Phase 8: Event Processing & System Coordination**
+- **Prerequisites Status:** Fully satisfied. Phase 7 establishes the Transactional Outbox pattern, schema models, and background worker primitives; Phases 2–6 provide banking transactions, policy evaluations, fraud alerts, and privacy indicators.
+- **Upcoming Scope:** Implement RabbitMQ topic exchange topology (`sentinel.events`), message publishing relayer, dead-letter exchanges, and idempotent event consumer pipeline.
 
 
