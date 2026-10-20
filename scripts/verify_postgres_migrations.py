@@ -94,8 +94,6 @@ def validate_migrations(sync_url: str) -> dict[str, Any]:
         "fraud_alerts",
         "shared_indicators",
         "privacy_audit_logs",
-        "drunix_outbox_events",
-        "drunix_ledger_submissions",
     }
     missing_tables = expected_tables - table_names
     if missing_tables:
@@ -114,26 +112,6 @@ def validate_migrations(sync_url: str) -> dict[str, Any]:
     shared_uq_names = [uq["name"] for uq in shared_uq_constraints]
     assert "uq_shared_indicators_origin_mesh_type_policy" in shared_uq_names
     report["constraints_verified"].append("uq_shared_indicators_origin_mesh_type_policy")
-
-    # Check unique constraint on drunix_outbox_events
-    outbox_uq_constraints = inspector.get_unique_constraints("drunix_outbox_events")
-    outbox_uq_names = [uq["name"] for uq in outbox_uq_constraints]
-    assert "uq_drunix_outbox_institution_idempotency" in outbox_uq_names
-    report["constraints_verified"].append("uq_drunix_outbox_institution_idempotency")
-
-    # Check indexes on drunix_outbox_events
-    outbox_indexes = inspector.get_indexes("drunix_outbox_events")
-    outbox_index_names = [idx["name"] for idx in outbox_indexes]
-    for required_idx in [
-        "ix_drunix_outbox_events_status",
-        "ix_drunix_outbox_events_next_attempt_at",
-        "ix_drunix_outbox_events_institution_id",
-        "ix_drunix_outbox_events_idempotency_key",
-    ]:
-        assert required_idx in outbox_index_names, (
-            f"Missing index on drunix_outbox_events: {required_idx}"
-        )
-        report["constraints_verified"].append(required_idx)
 
     # Check indexes on spending_reservations
     indexes = inspector.get_indexes("spending_reservations")
@@ -183,7 +161,7 @@ def validate_migrations(sync_url: str) -> dict[str, Any]:
     command.downgrade(alembic_cfg, "20261016_0003")
     inspector = inspect(engine)
     remaining_tables = set(inspector.get_table_names())
-    phase4_7_tables = {
+    phase4_6_tables = {
         "policies",
         "spending_reservations",
         "step_up_challenges",
@@ -192,18 +170,16 @@ def validate_migrations(sync_url: str) -> dict[str, Any]:
         "fraud_alerts",
         "shared_indicators",
         "privacy_audit_logs",
-        "drunix_outbox_events",
-        "drunix_ledger_submissions",
     }
-    assert not (phase4_7_tables & remaining_tables), (
-        "Phase 4-7 tables were not dropped on downgrade!"
-    )
+    assert not (
+        phase4_6_tables & remaining_tables
+    ), "Phase 4-6 tables were not dropped on downgrade!"
 
     report["downgrade_verified"] = True
-    print("[MIGRATION_CHECK] Downgrade verified: Phase 4-7 tables dropped cleanly.")
+    print("[MIGRATION_CHECK] Downgrade verified: Phase 4-6 tables dropped cleanly.")
 
     # 4. Re-upgrade to head
-    print("[MIGRATION_CHECK] Testing re-upgrade to head (20261020_0007)...")
+    print("[MIGRATION_CHECK] Testing re-upgrade to head (20261019_0006)...")
     command.upgrade(alembic_cfg, "head")
     inspector = inspect(engine)
     restored_tables = set(inspector.get_table_names())
@@ -228,9 +204,7 @@ def main() -> None:
         print(f"[REASON] {info_or_err}")
         print("\nTo validate against a live PostgreSQL test instance:")
         print("  1. Ensure an isolated test database is running (e.g. in GitHub Actions CI).")
-        print(
-            "  2. Set TEST_POSTGRES_URL=postgresql+asyncpg://<user>:<password>@<host>:<port>/<db>"
-        )
+        print("  2. Set TEST_POSTGRES_URL=postgresql+asyncpg://<user>:<password>@<host>:<port>/<db>")
         print("  3. Re-run: python scripts/verify_postgres_migrations.py")
         print("=" * 70)
         sys.exit(0)

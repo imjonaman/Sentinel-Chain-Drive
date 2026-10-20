@@ -496,7 +496,9 @@ async def test_scenario_3_concurrent_same_key_same_intent_retries(
     agent_id = env["agent_1"]["id"]
 
     shared_idemp = f"concurrent-idemp-{uuid.uuid4().hex}"
-    payload = make_eval_payload(env, agent_num=1, amount="15000.0000", idempotency_key=shared_idemp)
+    payload = make_eval_payload(
+        env, agent_num=1, amount="15000.0000", idempotency_key=shared_idemp
+    )
 
     barrier = asyncio.Barrier(2)
 
@@ -629,9 +631,9 @@ async def test_scenario_5_concurrent_duplicate_nonce_fails_closed(
 
     # At least one must be DECLINE with REPLAY_DETECTED_NONCE_REUSED
     all_reasons = (data_1.get("reason_codes", []) or []) + (data_2.get("reason_codes", []) or [])
-    assert "REPLAY_DETECTED_NONCE_REUSED" in all_reasons, (
-        f"Expected replay rejection, got reasons: {all_reasons}"
-    )
+    assert (
+        "REPLAY_DETECTED_NONCE_REUSED" in all_reasons
+    ), f"Expected replay rejection, got reasons: {all_reasons}"
 
 
 # =============================================================================

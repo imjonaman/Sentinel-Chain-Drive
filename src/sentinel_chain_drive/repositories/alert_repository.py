@@ -77,11 +77,11 @@ class AlertRepository(BaseRepository[FraudAlert]):
         account_id: uuid.UUID | None = None,
     ) -> tuple[Sequence[FraudAlert], int]:
         """Fetch a paginated list of fraud alerts within the caller's institution scope."""
-        base_query = select(FraudAlert).where(FraudAlert.primary_institution_id == institution_id)
-        count_query = (
-            select(func.count())
-            .select_from(FraudAlert)
-            .where(FraudAlert.primary_institution_id == institution_id)
+        base_query = select(FraudAlert).where(
+            FraudAlert.primary_institution_id == institution_id
+        )
+        count_query = select(func.count()).select_from(FraudAlert).where(
+            FraudAlert.primary_institution_id == institution_id
         )
 
         if detector_type is not None:

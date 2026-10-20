@@ -43,13 +43,16 @@ class SharedIndicatorRepository:
         2. The indicator was broadcast to all member banks (target_institution_id is NULL), OR
         3. The indicator was specifically targeted to the caller institution.
         """
-        stmt = select(SharedIndicator).where(
-            SharedIndicator.id == indicator_id,
-            or_(
-                SharedIndicator.originating_institution_id == caller_institution_id,
-                SharedIndicator.target_institution_id.is_(None),
-                SharedIndicator.target_institution_id == caller_institution_id,
-            ),
+        stmt = (
+            select(SharedIndicator)
+            .where(
+                SharedIndicator.id == indicator_id,
+                or_(
+                    SharedIndicator.originating_institution_id == caller_institution_id,
+                    SharedIndicator.target_institution_id.is_(None),
+                    SharedIndicator.target_institution_id == caller_institution_id,
+                ),
+            )
         )
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
@@ -239,3 +242,4 @@ class PrivacyAuditRepository:
             "queried_count": counts.get(PrivacyAction.QUERY, 0),
             "revoked_count": revoked,
         }
+

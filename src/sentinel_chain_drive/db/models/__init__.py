@@ -24,19 +24,10 @@ from sentinel_chain_drive.db.models.authorization_record import (
     ProcessedNonce,
 )
 from sentinel_chain_drive.db.models.capability import Capability
-from sentinel_chain_drive.db.models.drunix_outbox import (
-    DrunixEventType,
-    DrunixOutboxEvent,
-    DrunixOutboxStatus,
-)
 from sentinel_chain_drive.db.models.institution import (
     VALID_INSTITUTION_TRANSITIONS,
     Institution,
     InstitutionStatus,
-)
-from sentinel_chain_drive.db.models.ledger_submission import (
-    DrunixLedgerSubmission,
-    DrunixSubmissionStatus,
 )
 from sentinel_chain_drive.db.models.policy import Policy
 from sentinel_chain_drive.db.models.policy_evaluation import (
@@ -85,11 +76,6 @@ __all__ = [
     "AuthorizationRecord",
     "Capability",
     "DetectorType",
-    "DrunixEventType",
-    "DrunixLedgerSubmission",
-    "DrunixOutboxEvent",
-    "DrunixOutboxStatus",
-    "DrunixSubmissionStatus",
     "FraudAlert",
     "HoldStatus",
     "IndicatorSeverity",

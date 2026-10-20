@@ -287,3 +287,4 @@ def test_policy_bridge_boundary_scores() -> None:
     )
     assert res_crit.risk_score == 0.90
     assert res_crit.manual_review_flag is True
+

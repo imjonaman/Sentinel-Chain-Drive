@@ -14,64 +14,58 @@ from sentinel_chain_drive.db.models.shared_indicator import (
 )
 
 # Fields strictly forbidden from leaving institutional boundaries in shared intelligence
-PROHIBITED_DISCLOSURE_FIELDS: frozenset[str] = frozenset(
-    {
-        "raw_account_number",
-        "account_number",
-        "customer_name",
-        "customer_id",
-        "owner_contact",
-        "private_key",
-        "credentials",
-        "password",
-        "secret",
-        "ssn",
-        "tax_id",
-        "national_id",
-        "email",
-        "phone",
-        "raw_transactions",
-        "transaction_ids",
-        "raw_transaction_ids",
-        "balance",
-        "initial_balance",
-    }
-)
+PROHIBITED_DISCLOSURE_FIELDS: frozenset[str] = frozenset({
+    "raw_account_number",
+    "account_number",
+    "customer_name",
+    "customer_id",
+    "owner_contact",
+    "private_key",
+    "credentials",
+    "password",
+    "secret",
+    "ssn",
+    "tax_id",
+    "national_id",
+    "email",
+    "phone",
+    "raw_transactions",
+    "transaction_ids",
+    "raw_transaction_ids",
+    "balance",
+    "initial_balance",
+})
 
 # Fields permitted within evidence_summary
-ALLOWED_EVIDENCE_FIELDS: frozenset[str] = frozenset(
-    {
-        "pattern_type",
-        "window_seconds",
-        "burst_count",
-        "source_count_tier",
-        "destination_count_tier",
-        "anonymized_volume_tier",
-        "mulechain_rule_version",
-        "scoring_model_version",
-        "flow_hop_count",
-        "ratio_range",
-        "pattern_description",
-        "detector",
-    }
-)
+ALLOWED_EVIDENCE_FIELDS: frozenset[str] = frozenset({
+    "pattern_type",
+    "window_seconds",
+    "burst_count",
+    "source_count_tier",
+    "destination_count_tier",
+    "anonymized_volume_tier",
+    "mulechain_rule_version",
+    "scoring_model_version",
+    "flow_hop_count",
+    "ratio_range",
+    "pattern_description",
+    "detector",
+})
 
 # Fields permitted within provenance metadata
-ALLOWED_PROVENANCE_FIELDS: frozenset[str] = frozenset(
-    {
-        "source_type",
-        "source",
-        "detector_type",
-        "scoring_model_version",
-        "detection_rule_version",
-        "origin_timestamp",
-        "algorithm",
-        "submission_timestamp",
-        "submitter_actor",
-        "originating_institution_id",
-        "epoch_id",
-    }
-)
+ALLOWED_PROVENANCE_FIELDS: frozenset[str] = frozenset({
+    "source_type",
+    "source",
+    "detector_type",
+    "scoring_model_version",
+    "detection_rule_version",
+    "origin_timestamp",
+    "algorithm",
+    "submission_timestamp",
+    "submitter_actor",
+    "originating_institution_id",
+    "epoch_id",
+})
 
 
 def validate_evidence_against_disclosure_allowlist(
@@ -85,13 +79,7 @@ def validate_evidence_against_disclosure_allowlist(
     for k, v in evidence.items():
         k_lower = k.lower().strip()
         sensitive_substrings = [
-            "account",
-            "customer",
-            "secret",
-            "private_key",
-            "password",
-            "transaction_id",
-            "raw_tx",
+            "account", "customer", "secret", "private_key", "password", "transaction_id", "raw_tx"
         ]
         if k_lower in PROHIBITED_DISCLOSURE_FIELDS or any(
             p in k_lower for p in sensitive_substrings
@@ -101,7 +89,9 @@ def validate_evidence_against_disclosure_allowlist(
             )
 
         if check_allowlist and k_lower not in ALLOWED_EVIDENCE_FIELDS:
-            raise ValueError(f"Unapproved disclosure evidence field '{k}' not in allowlist.")
+            raise ValueError(
+                f"Unapproved disclosure evidence field '{k}' not in allowlist."
+            )
 
         # Check nested structures
         if isinstance(v, dict):
@@ -114,7 +104,9 @@ def validate_evidence_against_disclosure_allowlist(
                     )
                 elif isinstance(item, str):
                     item_lower = item.lower().strip()
-                    sensitive_terms = ["account", "customer", "secret", "private_key", "password"]
+                    sensitive_terms = [
+                        "account", "customer", "secret", "private_key", "password"
+                    ]
                     if any(p in item_lower for p in sensitive_terms):
                         raise ValueError(f"Prohibited sensitive content in evidence list: '{item}'")
 
@@ -151,6 +143,7 @@ def validate_provenance_against_allowlist(
                 raise ValueError(f"Prohibited credential string in provenance field '{k}'.")
 
     return provenance
+
 
 
 class SharedIndicatorPublishRequest(BaseModel):

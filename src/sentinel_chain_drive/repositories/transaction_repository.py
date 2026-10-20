@@ -179,3 +179,4 @@ class TransactionRepository(BaseRepository[Transaction]):
 
         result = await self.session.execute(stmt)
         return result.scalars().all()
+

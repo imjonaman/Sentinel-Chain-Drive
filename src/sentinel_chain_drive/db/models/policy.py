@@ -123,3 +123,4 @@ class Policy(Base, UUIDPrimaryKeyMixin, TimestampMixin):
         self.description = description
         self.activated_at = activated_at or datetime.now(UTC)
         self.activated_by = activated_by
+

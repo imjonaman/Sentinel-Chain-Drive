@@ -101,15 +101,12 @@ class MuleChainService:
 
         # 3. Instantiate selected detectors
         detectors_to_run: list[BaseDetector] = []
-        detector_types = set(
-            include_detectors
-            or [
-                DetectorType.FAN_IN,
-                DetectorType.FAN_OUT,
-                DetectorType.RAPID_PASSTHROUGH,
-                DetectorType.CIRCULAR_LAYERING,
-            ]
-        )
+        detector_types = set(include_detectors or [
+            DetectorType.FAN_IN,
+            DetectorType.FAN_OUT,
+            DetectorType.RAPID_PASSTHROUGH,
+            DetectorType.CIRCULAR_LAYERING,
+        ])
 
         if DetectorType.FAN_IN in detector_types:
             detectors_to_run.append(FanInDetector(currency=currency_clean))

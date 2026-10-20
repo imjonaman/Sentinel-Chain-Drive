@@ -388,8 +388,12 @@ class TestCircularLayeringDetector:
         now = datetime.now(UTC)
 
         tx1 = _make_dummy_tx(a, b, inst_id, Decimal("5000.00"), created_at=now)
-        tx2 = _make_dummy_tx(b, c, inst_id, Decimal("4900.00"), created_at=now + timedelta(hours=1))
-        tx3 = _make_dummy_tx(c, a, inst_id, Decimal("4800.00"), created_at=now + timedelta(hours=2))
+        tx2 = _make_dummy_tx(
+            b, c, inst_id, Decimal("4900.00"), created_at=now + timedelta(hours=1)
+        )
+        tx3 = _make_dummy_tx(
+            c, a, inst_id, Decimal("4800.00"), created_at=now + timedelta(hours=2)
+        )
 
         builder = TransactionGraphBuilder(currency="USD")
         graph = builder.build_graph([tx1, tx2, tx3])
@@ -517,3 +521,4 @@ class TestDetectorModuleImportAndTypeAnnotations:
         for detector in detectors:
             findings = detector.detect(empty_graph)
             assert findings == []
+
