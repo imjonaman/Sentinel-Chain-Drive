@@ -97,7 +97,8 @@ class PrivacyGatewayPolicyBridge:
 
         # Check for velocity patterns in indicators
         velocity_pattern = any(
-            ind.pattern_category in (
+            ind.pattern_category
+            in (
                 "RAPID_DISPERSION",
                 "STRUCTURING_FAN_OUT",
                 "HIGH_VELOCITY_BURST",
@@ -148,4 +149,3 @@ class PrivacyGatewayPolicyBridge:
             manual_review_flag=base.manual_review_flag,
             custom_signals=custom,
         )
-

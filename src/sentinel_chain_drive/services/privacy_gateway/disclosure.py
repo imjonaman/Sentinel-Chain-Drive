@@ -77,11 +77,10 @@ class DataDisclosurePolicy:
             or 3
         )
 
-        aggregate_amt = (
-            raw_evidence.get("aggregate_amount") or raw_evidence.get("cycle_total_amount")
+        aggregate_amt = raw_evidence.get("aggregate_amount") or raw_evidence.get(
+            "cycle_total_amount"
         )
         volume_tier = cls.classify_volume_tier(aggregate_amt) if aggregate_amt else "TIER_UNKNOWN"
-
 
         sanitized_evidence: dict[str, Any] = {
             "pattern_type": str(alert.detector_type.value),

@@ -34,7 +34,6 @@ def get_agent_service(session: AsyncSession = Depends(get_db_session)) -> AgentS
 
 
 def get_policy_service(session: AsyncSession = Depends(get_db_session)) -> PolicyService:
-
     """Dependency provider for PolicyService with injected database session."""
     return PolicyService(session)
 
@@ -61,4 +60,3 @@ __all__ = [
     "get_privacy_gateway_service",
     "get_system_service",
 ]
-

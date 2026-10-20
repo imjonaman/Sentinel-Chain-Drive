@@ -25,8 +25,7 @@ def _require_institution_id(x_institution_id: uuid.UUID | None) -> uuid.UUID:
     if x_institution_id is None:
         raise AppException(
             message=(
-                "Header X-Institution-ID is required for "
-                "cross-institution intelligence operations."
+                "Header X-Institution-ID is required for cross-institution intelligence operations."
             ),
             status_code=status.HTTP_400_BAD_REQUEST,
             error_code="MISSING_INSTITUTION_CONTEXT",
@@ -176,4 +175,3 @@ async def get_audit_summary(
 ) -> PrivacyAuditSummaryResponse:
     institution_id = _require_institution_id(x_institution_id)
     return await service.get_audit_summary(institution_id=institution_id)
-

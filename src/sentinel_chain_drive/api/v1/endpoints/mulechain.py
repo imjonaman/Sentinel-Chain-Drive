@@ -108,15 +108,11 @@ async def list_fraud_alerts(
     detector_type: DetectorType | None = Query(
         default=None, description="Filter by detector pattern"
     ),
-    severity: AlertSeverity | None = Query(
-        default=None, description="Filter by severity level"
-    ),
+    severity: AlertSeverity | None = Query(default=None, description="Filter by severity level"),
     alert_status: AlertStatus | None = Query(
         default=None, alias="status", description="Filter by lifecycle status"
     ),
-    account_id: uuid.UUID | None = Query(
-        default=None, description="Filter by primary account"
-    ),
+    account_id: uuid.UUID | None = Query(default=None, description="Filter by primary account"),
     limit: int = Query(default=50, ge=1, le=100, description="Items per page"),
     offset: int = Query(default=0, ge=0, description="Items to skip"),
     x_institution_id: uuid.UUID | None = Header(default=None, alias="X-Institution-ID"),

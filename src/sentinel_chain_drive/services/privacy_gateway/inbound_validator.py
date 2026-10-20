@@ -50,9 +50,7 @@ class InboundIndicatorValidator:
 
         # 2. Pseudonym format validation
         if not HEX_64_PATTERN.match(pseudonymous_mesh_id):
-            raise ValueError(
-                "Invalid MeshID format. Expected exactly 64 hexadecimal characters."
-            )
+            raise ValueError("Invalid MeshID format. Expected exactly 64 hexadecimal characters.")
 
         # 3. Indicator type validation
         if isinstance(indicator_type, str):
@@ -90,7 +88,6 @@ class InboundIndicatorValidator:
                 f"<= current time {current_time.isoformat()}."
             )
             raise ValueError(msg)
-
 
         # 8. Field-level disclosure allowlist & prohibited field checks
         validate_evidence_against_disclosure_allowlist(evidence_summary)
