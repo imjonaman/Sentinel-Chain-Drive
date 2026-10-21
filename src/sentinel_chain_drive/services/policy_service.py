@@ -667,6 +667,8 @@ class PolicyService:
             attestation_commitment = hashlib.sha256(
                 f"{eval_record.id}:{agent.id}:ALLOW:{tx_hash}".encode()
             ).hexdigest()
+            tx_id = req.transaction_id
+            ordering_key = f"tx:{tx_id}" if tx_id else f"eval:{eval_record.id}"
             await outbox_repo.create_event(
                 institution_id=req.institution_id,
                 event_type=DrunixEventType.AUTH_ATTESTATION,
@@ -676,6 +678,10 @@ class PolicyService:
                 commitment_hash=attestation_commitment,
                 payload=outbox_payload,
                 correlation_id=correlation_id,
+                causation_id=str(tx_id) if tx_id else None,
+                ordering_key=ordering_key,
+                sequence_number=2 if tx_id else 1,
+                event_category="DRUNIX_DELIVERY",
             )
 
         await self.session.flush()
@@ -959,6 +965,8 @@ class PolicyService:
                 attestation_commitment = hashlib.sha256(
                     f"{eval_rec.id}:{ch.initiating_agent_id}:ALLOW:{ch.transaction_intent_hash}".encode()
                 ).hexdigest()
+                tx_id = ch.transaction_id
+                ordering_key = f"tx:{tx_id}" if tx_id else f"eval:{eval_rec.id}"
                 await outbox_repo.create_event(
                     institution_id=ch.institution_id,
                     event_type=DrunixEventType.AUTH_ATTESTATION,
@@ -968,6 +976,10 @@ class PolicyService:
                     commitment_hash=attestation_commitment,
                     payload=outbox_payload,
                     correlation_id=None,
+                    causation_id=str(tx_id) if tx_id else None,
+                    ordering_key=ordering_key,
+                    sequence_number=2 if tx_id else 1,
+                    event_category="DRUNIX_DELIVERY",
                 )
             if ch.transaction_id is not None:
                 await self._update_linked_transaction_status(
@@ -1085,6 +1097,8 @@ class PolicyService:
                 attestation_commitment = hashlib.sha256(
                     f"{eval_rec.id}:HOLD_RELEASED:ALLOW:{h.transaction_intent_hash}".encode()
                 ).hexdigest()
+                tx_id = h.transaction_id
+                ordering_key = f"tx:{tx_id}" if tx_id else f"eval:{eval_rec.id}"
                 await outbox_repo.create_event(
                     institution_id=h.institution_id,
                     event_type=DrunixEventType.AUTH_ATTESTATION,
@@ -1094,6 +1108,10 @@ class PolicyService:
                     commitment_hash=attestation_commitment,
                     payload=outbox_payload,
                     correlation_id=None,
+                    causation_id=str(tx_id) if tx_id else None,
+                    ordering_key=ordering_key,
+                    sequence_number=2 if tx_id else 1,
+                    event_category="DRUNIX_DELIVERY",
                 )
             if h.transaction_id is not None:
                 await self._update_linked_transaction_status(

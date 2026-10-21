@@ -14,6 +14,7 @@ from sqlalchemy import (
     DateTime,
     Enum,
     ForeignKey,
+    Index,
     Integer,
     String,
     UniqueConstraint,
@@ -36,18 +37,30 @@ class DrunixOutboxStatus(enum.StrEnum):
 
 
 class DrunixEventType(enum.StrEnum):
-    """Explicit event types handled by the DRUNIX integration outbox."""
+    """Explicit event types handled by the outbox."""
 
+    # DRUNIX ledger delivery
     AUTH_ATTESTATION = "AUTH_ATTESTATION"
     FRAUD_INDICATOR = "FRAUD_INDICATOR"
     SETTLEMENT_RECORD = "SETTLEMENT_RECORD"
+
+    # Domain events
+    TRANSACTION_SUBMITTED = "TRANSACTION_SUBMITTED"
+    TRANSACTION_AUTHORIZED = "TRANSACTION_AUTHORIZED"
+    TRANSACTION_SETTLED = "TRANSACTION_SETTLED"
+    TRANSACTION_HELD = "TRANSACTION_HELD"
+    TRANSACTION_DECLINED = "TRANSACTION_DECLINED"
+
+    # Fraud-intelligence events
+    FRAUD_ALERT_RAISED = "FRAUD_ALERT_RAISED"
+    SHARED_INDICATOR_PUBLISHED = "SHARED_INDICATOR_PUBLISHED"
 
 
 class DrunixOutboxEvent(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     """Durable transactional outbox event record.
 
     Persisted in the same ACID transaction as the domain state change that requires
-    external DRUNIX ledger attestation.
+    external DRUNIX ledger attestation or asynchronous system event dispatch.
     """
 
     __tablename__ = "drunix_outbox_events"
@@ -57,6 +70,13 @@ class DrunixOutboxEvent(Base, UUIDPrimaryKeyMixin, TimestampMixin):
             "idempotency_key",
             name="uq_drunix_outbox_institution_idempotency",
         ),
+        UniqueConstraint(
+            "ordering_key",
+            "sequence_number",
+            name="uq_drunix_outbox_ordering_seq",
+        ),
+        Index("ix_drunix_outbox_events_ordering_seq", "ordering_key", "sequence_number"),
+        Index("ix_drunix_outbox_events_status_next_attempt", "status", "next_attempt_at"),
     )
 
     institution_id: Mapped[uuid.UUID] = mapped_column(
@@ -65,9 +85,15 @@ class DrunixOutboxEvent(Base, UUIDPrimaryKeyMixin, TimestampMixin):
         nullable=False,
         index=True,
     )
-    event_type: Mapped[DrunixEventType] = mapped_column(
-        Enum(DrunixEventType, name="drunix_event_type_enum", native_enum=False),
+    event_type: Mapped[str] = mapped_column(
+        String(64),
         nullable=False,
+        index=True,
+    )
+    event_category: Mapped[str] = mapped_column(
+        String(32),
+        nullable=False,
+        default="DRUNIX_DELIVERY",
         index=True,
     )
     schema_version: Mapped[str] = mapped_column(
@@ -150,4 +176,31 @@ class DrunixOutboxEvent(Base, UUIDPrimaryKeyMixin, TimestampMixin):
         String(64),
         nullable=True,
         index=True,
+    )
+    causation_id: Mapped[str | None] = mapped_column(
+        String(64),
+        nullable=True,
+        index=True,
+    )
+    ordering_key: Mapped[str | None] = mapped_column(
+        String(128),
+        nullable=True,
+        index=True,
+    )
+    sequence_number: Mapped[int | None] = mapped_column(
+        Integer,
+        nullable=True,
+    )
+    replay_count: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        default=0,
+    )
+    last_replayed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+    replayed_by: Mapped[str | None] = mapped_column(
+        String(128),
+        nullable=True,
     )

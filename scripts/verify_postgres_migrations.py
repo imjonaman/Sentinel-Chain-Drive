@@ -96,6 +96,7 @@ def validate_migrations(sync_url: str) -> dict[str, Any]:
         "privacy_audit_logs",
         "drunix_outbox_events",
         "drunix_ledger_submissions",
+        "processed_events",
     }
     missing_tables = expected_tables - table_names
     if missing_tables:
@@ -126,6 +127,18 @@ def validate_migrations(sync_url: str) -> dict[str, Any]:
         f"Missing uq_drunix_outbox_institution_idempotency in {outbox_uq_names}"
     )
     report["constraints_verified"].append("uq_drunix_outbox_institution_idempotency")
+    assert "uq_drunix_outbox_ordering_seq" in outbox_uq_names, (
+        f"Missing uq_drunix_outbox_ordering_seq in {outbox_uq_names}"
+    )
+    report["constraints_verified"].append("uq_drunix_outbox_ordering_seq")
+
+    # Check unique constraint on processed_events
+    proc_uq_constraints = inspector.get_unique_constraints("processed_events")
+    proc_uq_names = [uq["name"] for uq in proc_uq_constraints]
+    assert "uq_processed_events_consumer_event" in proc_uq_names, (
+        f"Missing uq_processed_events_consumer_event in {proc_uq_names}"
+    )
+    report["constraints_verified"].append("uq_processed_events_consumer_event")
 
     # Check indexes on drunix_outbox_events
     outbox_indexes = inspector.get_indexes("drunix_outbox_events")
@@ -135,6 +148,7 @@ def validate_migrations(sync_url: str) -> dict[str, Any]:
         "ix_drunix_outbox_events_next_attempt_at",
         "ix_drunix_outbox_events_institution_id",
         "ix_drunix_outbox_events_idempotency_key",
+        "ix_drunix_outbox_events_ordering_seq",
     ]:
         assert required_idx in outbox_index_names, (
             f"Missing index on drunix_outbox_events: {required_idx} (found: {outbox_index_names})"
@@ -190,7 +204,7 @@ def validate_migrations(sync_url: str) -> dict[str, Any]:
     command.downgrade(alembic_cfg, "20261016_0003")
     inspector = inspect(engine)
     remaining_tables = set(inspector.get_table_names())
-    phase4_7_tables = {
+    phase4_8_tables = {
         "policies",
         "spending_reservations",
         "step_up_challenges",
@@ -201,18 +215,19 @@ def validate_migrations(sync_url: str) -> dict[str, Any]:
         "privacy_audit_logs",
         "drunix_outbox_events",
         "drunix_ledger_submissions",
+        "processed_events",
     }
-    dropped_failures = phase4_7_tables & remaining_tables
+    dropped_failures = phase4_8_tables & remaining_tables
     assert not dropped_failures, (
-        f"Phase 4-7 tables were not dropped on downgrade: {dropped_failures}"
+        f"Phase 4-8 tables were not dropped on downgrade: {dropped_failures}"
     )
 
     report["downgrade_verified"] = True
-    print("[MIGRATION_CHECK] Downgrade verified: Phase 4-7 tables dropped cleanly.")
+    print("[MIGRATION_CHECK] Downgrade verified: Phase 4-8 tables dropped cleanly.")
 
     # 4. Re-upgrade to head
     engine.dispose()
-    print("[MIGRATION_CHECK] Testing re-upgrade to head (20261020_0007)...")
+    print("[MIGRATION_CHECK] Testing re-upgrade to head (20261021_0008)...")
     command.upgrade(alembic_cfg, "head")
     inspector = inspect(engine)
     restored_tables = set(inspector.get_table_names())
@@ -235,8 +250,9 @@ def main() -> None:
     is_available, info_or_err = check_postgres_availability(sync_url)
 
     if not is_available:
-        print("[POSTGRES_STATUS] UNVERIFIED (No isolated PostgreSQL instance reachable)")
+        print("[POSTGRES_STATUS] NOT VERIFIED (PostgreSQL test instance is unreachable)")
         print(f"[REASON] {info_or_err}")
+        print("[NOTICE] Alembic upgrade/downgrade/re-upgrade was NOT executed on PostgreSQL.")
         print("\nTo validate against a live PostgreSQL test instance:")
         print("  1. Ensure an isolated test database is running (e.g. in GitHub Actions CI).")
         print(
@@ -244,6 +260,10 @@ def main() -> None:
         )
         print("  3. Re-run: python scripts/verify_postgres_migrations.py")
         print("=" * 70)
+        # In strict or CI environments where TEST_POSTGRES_URL was explicitly provided or required
+        if os.environ.get("REQUIRE_POSTGRES") == "1" or "--require-postgres" in sys.argv:
+            print("[FATAL] PostgreSQL is required by configuration, but connection failed.")
+            sys.exit(1)
         sys.exit(0)
 
     print(f"[POSTGRES_STATUS] CONNECTED: {info_or_err}")

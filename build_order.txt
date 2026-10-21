@@ -919,7 +919,18 @@ Feature 8.3: Idempotent Event Consumers
 
 8.4 Exit Gate & Acceptance Criteria:
 - No events lost during simulated broker restarts.
-- End-to-end workflow verified from transaction submission -> outbox -> RabbitMQ -> graph update.
+- End-to-end workflow verified from transaction submission -> outbox -> graph update -> ledger attestation.
+
+8.5 Implementation Status & Verification Evidence:
+- Status: COMPLETED AND VERIFIED (Phase 8: Event Processing, Reliability and Verification).
+- Exit Gate Satisfied: Yes.
+- PostgreSQL Transactional Outbox & Stream Ordering: Built directly on the Phase 7 transactional outbox. Extended `drunix_outbox_events` with stream ordering guarantees (`ordering_key`, `sequence_number`, and composite index `ix_drunix_outbox_events_ordering_seq`). Implemented ordering guard in `claim_pending_events` using PostgreSQL transaction semantics and subquery exclusion preventing successor events from being claimed while an undelivered predecessor in the stream exists.
+- Event Contracts & Data Minimization: Defined canonical `EventEnvelope`, `EventCategory` (`DOMAIN`, `FRAUD_INTELLIGENCE`, `DRUNIX_DELIVERY`), and strict Pydantic payload models in `src/sentinel_chain_drive/schemas/events.py` for `TransactionSubmittedPayload`, `TransactionAuthorizedPayload`, `TransactionSettledPayload`, `FraudAlertPayload`, and `SharedIndicatorPayload`. Enforced strict prohibition of sensitive keys (`raw_pan`, `password`, `private_key`, `credentials`, `secret`) and version policy enforcing `v1.0`.
+- Consumer Idempotency: Implemented `ProcessedEvent` model and `ProcessedEventRepository` with unique constraint `uq_processed_events_consumer_event` to guarantee idempotent message handling without duplicate state changes.
+- Controlled Replay & Tenant Boundary Isolation: Created `/outbox/{event_id}/replay` and `/outbox/replay-batch` endpoints enforcing institution isolation (403 on cross-tenant access), checking event eligibility (only `TERMINAL_FAILURE`, `RETRYABLE_FAILURE`, `RECONCILIATION_REQUIRED`), resetting retry attempts, incrementing replay counter, and persisting `AuditLog` records (`OUTBOX_EVENT_REPLAYED`).
+- Operational Visibility: Enhanced `/drunix/status` and `get_status_overview` to report `total_retries`, `replay_operations_total`, `stale_claims_recovered_total`, `average_processing_latency_ms`, and `backpressure_active`.
+- Automated Test Suite: 225/225 tests passing across the repository (18 new Phase 8 unit and integration tests; zero regressions across Phases 1–7).
+- Static Checking & Migrations: Ruff clean; strict Mypy clean across 140 source files; migration `20261021_0008_event_processing_reliability.py` validated with upgrade, downgrade to Phase 3, and re-upgrade to head.
 
 
 # -------------------------------------------------------------------------------

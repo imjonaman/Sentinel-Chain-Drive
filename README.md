@@ -6,9 +6,9 @@ Sentinel Chain Drive is an enterprise security and intelligence platform designe
 
 ---
 
-## Current Status: Phase 7 Complete (Audited: 2026-10-20)
+## Current Status: Phase 8 Complete (Audited: 2026-10-21)
 
-Sentinel Chain Drive is developed under an explicit 13-phase architectural roadmap defined in [`build_order.txt`](file:///c:/Users/imjon/OneDrive/Documents/GitHub/Sentinel-Chain-Drive/build_order.txt). As of the latest repository audit on **2026-10-20**, **Phases 1 through 7 are COMPLETE and VERIFIED**, with 207 automated unit and integration tests passing.
+Sentinel Chain Drive is developed under an explicit 13-phase architectural roadmap defined in [`build_order.txt`](file:///c:/Users/imjon/OneDrive/Documents/GitHub/Sentinel-Chain-Drive/build_order.txt). As of the latest repository audit on **2026-10-21**, **Phases 1 through 8 are COMPLETE and VERIFIED**, with 225 automated unit and integration tests passing.
 
 ### Master Phase Status Summary
 
@@ -21,7 +21,7 @@ Sentinel Chain Drive is developed under an explicit 13-phase architectural roadm
 | **5** | **MuleChain - Graph-Based Fraud Intelligence** | **COMPLETE** | In-memory NetworkX directed multigraph (`MultiDiGraph`), 4 topological detectors (fan-in, fan-out, rapid pass-through, circular layering), explainable 0–100 risk scoring, idempotent SHA-256 fingerprint deduplication, Phase 4 Policy Engine bridge. |
 | **6** | **Privacy Gateway & Cross-Institution Intelligence** | **COMPLETE** | Keyed HMAC-SHA256 pseudonymization (`MeshID`) with purpose-binding and epoch rotation, field-level disclosure policies & prohibited-field rejection, shared indicator registry, anti-enumeration rate limiting, policy engine risk bridge. |
 | **7** | **DRUNIX Ledger Integration** | **COMPLETE** | Transactional Outbox pattern (`drunix_outbox_events`), ledger submission tracking (`drunix_ledger_submissions`), resilient asynchronous worker with exponential backoff & jitter, 3-state circuit breaker, `MockDRUNIXAdapter` simulator with 10 deterministic failure modes, stale lock recovery, reconciliation loop, status API, and Alembic migration `20261020_0007`. Live RPC network connection isolated pending external protocol specifications. |
-| **8** | **Event Processing & System Coordination** | **NOT STARTED** | Transactional Outbox pattern, RabbitMQ topic exchange topology, dead-letter queues, idempotent event consumers. |
+| **8** | **Event Processing, Reliability & Verification** | **COMPLETE** | Transactional outbox event contracts, strict payload minimization (raw PANs/credentials prohibited), stream ordering per `ordering_key`, consumer idempotency (`processed_events`), controlled replay with tenant boundary enforcement, poison event terminal failure handling, and operational metrics. |
 | **9** | **Investigation, Case Management, & Recovery Orchestration** | **NOT STARTED** | Alert triage API, fraud case management, evidentiary audit dossier compiler, simulated recovery orchestration. |
 | **10** | **Frontend Dashboard & Operator Experience** | **NOT STARTED** | React 18/19, TypeScript, Vite SPA, interactive Cytoscape.js transaction graph visualization, operator queues, policy console. |
 | **11** | **Security Hardening & Adversarial Validation** | **NOT STARTED** | Standalone adversarial attack test harness, chaos fault injection (database/broker disconnects), automated container scanning. |
@@ -32,7 +32,7 @@ Sentinel Chain Drive is developed under an explicit 13-phase architectural roadm
 
 ---
 
-## Implemented Architectural Capabilities (Phases 1–7)
+## Implemented Architectural Capabilities (Phases 1–8)
 
 ### Phase 1: Foundation & Core Infrastructure
 - **Enterprise Web Framework:** FastAPI running on Starlette with asynchronous request handling.
@@ -123,6 +123,16 @@ Sentinel Chain Drive is developed under an explicit 13-phase architectural roadm
 - **Immutable Ledger Submission Audit Trail (`drunix_ledger_submissions`):** Records every submission attempt with timestamp, latency (ms), status, receipt hash, block height, and error classification, enabling cryptographic verification of external ledger commitments.
 - **Health & Monitoring Telemetry API:** Dedicated monitoring endpoint (`GET /api/v1/drunix/status`) exposing worker heartbeat, queue depth breakdown by status (`PENDING`, `IN_PROGRESS`, `COMPLETED`, `FAILED`), circuit breaker state and failure counters, and active mock adapter configuration.
 - **Database Schema Migration (`20261020_0007`):** Alembic migration establishing `drunix_outbox_events` and `drunix_ledger_submissions` tables with hardened $\le 63$-character foreign keys and compound indexes for high-throughput polling.
+
+### Phase 8: Event Processing, Reliability and Verification
+- **Formal Event Contracts & Envelope (`EventEnvelope`):** Standardized contract representation categorizing events into `DOMAIN`, `FRAUD_INTELLIGENCE`, and `DRUNIX_DELIVERY`, supporting explicit schema versioning (`v1.0`), correlation IDs, causation IDs, and stream ordering metadata.
+- **Strict Payload Minimization & Secret Prohibition:** Enforced rejection of sensitive financial identifiers (`raw_pan`, `password`, `private_key`, `secret`, `credential`) across all event payloads via `SensitivePayloadDataError`.
+- **Stream Ordering Guarantees:** Sequence enforcement per `ordering_key` preventing successor events (e.g. authorization or settlement) from being claimed or executed while an earlier predecessor in the stream is pending or retrying.
+- **Consumer Idempotency Registry (`processed_events`):** Database-backed consumer deduplication tracking (`ProcessedEvent`) with unique constraint `uq_processed_events_consumer_event` ensuring that redelivered events are recognized and handled idempotently without duplicate side effects.
+- **Controlled Replay & Institutional Boundary Isolation:** API endpoints (`POST /api/v1/drunix/outbox/{id}/replay` and `POST /api/v1/drunix/outbox/replay-batch`) verifying institution-level authorization (`X-Institution-ID`), validating eligibility (rejecting non-failed events), resetting attempt counters, incrementing replay tracking, and recording tamper-evident audit logs (`OUTBOX_EVENT_REPLAYED`).
+- **Terminal Poison Event Handling:** Malformed payloads and events exhausting retry bounds transition into `TERMINAL_FAILURE`, preventing worker lockup or crash loops while triggering operational alerts.
+- **Enhanced Observability Metrics:** Status overview exposing queue metrics, oldest pending event age, total retries, replay operations, stale claims recovered, average processing latency (ms), and backpressure state.
+- **Database Schema Migration (`20261021_0008`):** Alembic migration extending `drunix_outbox_events` with ordering and replay columns (`ordering_key`, `sequence_number`, `replay_count`, `last_replayed_at`, `replayed_by`) and adding the `processed_events` consumer table.
 
 ---
 

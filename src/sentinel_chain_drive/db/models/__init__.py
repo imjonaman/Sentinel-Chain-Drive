@@ -54,6 +54,7 @@ from sentinel_chain_drive.db.models.privacy_audit import (
     PrivacyAuditLog,
     PrivacyOutcome,
 )
+from sentinel_chain_drive.db.models.processed_event import ProcessedEvent
 from sentinel_chain_drive.db.models.shared_indicator import (
     IndicatorSeverity,
     IndicatorStatus,
@@ -104,6 +105,7 @@ __all__ = [
     "PrivacyAuditLog",
     "PrivacyOutcome",
     "ProcessedNonce",
+    "ProcessedEvent",
     "SharedIndicator",
     "SpendingReservation",
     "SpendingReservationStatus",

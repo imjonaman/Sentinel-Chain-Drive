@@ -1,5 +1,4 @@
-"""MuleChain fraud intelligence orchestrator service."""
-
+import hashlib
 import time
 import uuid
 from datetime import UTC, datetime, timedelta
@@ -12,9 +11,11 @@ from sentinel_chain_drive.db.models.alert import (
     DetectorType,
     FraudAlert,
 )
+from sentinel_chain_drive.db.models.drunix_outbox import DrunixEventType
 from sentinel_chain_drive.db.models.transaction import TransactionStatus
 from sentinel_chain_drive.repositories.account_repository import AccountRepository
 from sentinel_chain_drive.repositories.alert_repository import AlertRepository
+from sentinel_chain_drive.repositories.drunix_outbox_repository import DrunixOutboxRepository
 from sentinel_chain_drive.repositories.transaction_repository import TransactionRepository
 from sentinel_chain_drive.schemas.alert import (
     FraudAlertResponse,
@@ -157,6 +158,34 @@ class MuleChainService:
             persisted_alerts.append(saved_alert)
             if was_created:
                 alerts_generated += 1
+                outbox_repo = DrunixOutboxRepository(self.session)
+                outbox_payload = {
+                    "alert_id": str(saved_alert.id),
+                    "alert_code": saved_alert.alert_code,
+                    "detector_type": saved_alert.detector_type.value,
+                    "severity": saved_alert.severity.value,
+                    "risk_score": saved_alert.risk_score,
+                    "primary_institution_id": str(saved_alert.primary_institution_id),
+                    "primary_account_id": str(saved_alert.primary_account_id),
+                    "currency": saved_alert.currency,
+                    "detection_rule_version": saved_alert.detection_rule_version,
+                    "evidence_summary": saved_alert.evidence_data,
+                }
+                commitment = hashlib.sha256(
+                    f"{saved_alert.id}:{saved_alert.dedup_fingerprint}".encode()
+                ).hexdigest()
+                await outbox_repo.create_event(
+                    institution_id=saved_alert.primary_institution_id,
+                    event_type=DrunixEventType.FRAUD_ALERT_RAISED,
+                    aggregate_type="ALERT",
+                    aggregate_id=saved_alert.id,
+                    idempotency_key=f"event:alert_raised:{saved_alert.id}",
+                    commitment_hash=commitment,
+                    payload=outbox_payload,
+                    event_category="FRAUD_INTELLIGENCE",
+                    ordering_key=f"alert:{saved_alert.id}",
+                    sequence_number=1,
+                )
             else:
                 alerts_deduplicated += 1
 

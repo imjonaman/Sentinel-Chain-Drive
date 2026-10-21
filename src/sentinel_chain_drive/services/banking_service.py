@@ -1,5 +1,4 @@
-"""Business logic for the simulated banking environment and transaction lifecycle."""
-
+import hashlib
 import logging
 import uuid
 from datetime import UTC, datetime
@@ -15,6 +14,7 @@ from sentinel_chain_drive.db.models.account import (
     Account,
     AccountStatus,
 )
+from sentinel_chain_drive.db.models.drunix_outbox import DrunixEventType
 from sentinel_chain_drive.db.models.institution import (
     VALID_INSTITUTION_TRANSITIONS,
     Institution,
@@ -27,6 +27,7 @@ from sentinel_chain_drive.db.models.transaction import (
 )
 from sentinel_chain_drive.repositories.account_repository import AccountRepository
 from sentinel_chain_drive.repositories.audit_repository import AuditRepository
+from sentinel_chain_drive.repositories.drunix_outbox_repository import DrunixOutboxRepository
 from sentinel_chain_drive.repositories.institution_repository import InstitutionRepository
 from sentinel_chain_drive.repositories.transaction_repository import TransactionRepository
 from sentinel_chain_drive.schemas.account import (
@@ -639,6 +640,36 @@ class BankingService:
                 ) from None
             raise
 
+        # Atomically persist domain outbox event
+        outbox_repo = DrunixOutboxRepository(self.session)
+        sub_iso = (created_tx.created_at or datetime.now(UTC)).isoformat()
+        outbox_payload = {
+            "transaction_id": str(created_tx.id),
+            "idempotency_key": created_tx.idempotency_key,
+            "origin_institution_id": str(created_tx.origin_institution_id),
+            "destination_institution_id": str(created_tx.destination_institution_id),
+            "amount": str(created_tx.amount),
+            "currency": created_tx.currency,
+            "purpose_code": created_tx.purpose_code,
+            "submitted_at": sub_iso,
+        }
+        commitment = hashlib.sha256(
+            f"{created_tx.id}:SUBMITTED:{created_tx.amount}:{created_tx.currency}".encode()
+        ).hexdigest()
+        await outbox_repo.create_event(
+            institution_id=created_tx.origin_institution_id,
+            event_type=DrunixEventType.TRANSACTION_SUBMITTED,
+            aggregate_type="TRANSACTION",
+            aggregate_id=created_tx.id,
+            idempotency_key=f"event:tx_submitted:{created_tx.id}",
+            commitment_hash=commitment,
+            payload=outbox_payload,
+            correlation_id=correlation_id,
+            event_category="DOMAIN",
+            ordering_key=f"tx:{created_tx.id}",
+            sequence_number=1,
+        )
+
         await self.audit_repo.create_log(
             AuditLogCreate(
                 event_type="TRANSACTION_SUBMITTED",
@@ -768,6 +799,35 @@ class BankingService:
             correlation_id=correlation_id,
             settled_at=settled_at,
         )
+
+        if target_status == TransactionStatus.SETTLED:
+            outbox_repo = DrunixOutboxRepository(self.session)
+            settled_iso = (settled_at or datetime.now(UTC)).isoformat()
+            outbox_payload = {
+                "transaction_id": str(updated_tx.id),
+                "institution_id": str(updated_tx.origin_institution_id),
+                "amount": str(updated_tx.amount),
+                "currency": updated_tx.currency,
+                "settled_at": settled_iso,
+                "receipt_reference": None,
+            }
+            settle_commitment = hashlib.sha256(
+                f"{updated_tx.id}:SETTLED:{updated_tx.amount}:{settled_iso}".encode()
+            ).hexdigest()
+            await outbox_repo.create_event(
+                institution_id=updated_tx.origin_institution_id,
+                event_type=DrunixEventType.SETTLEMENT_RECORD,
+                aggregate_type="TRANSACTION",
+                aggregate_id=updated_tx.id,
+                idempotency_key=f"drunix:settlement:{updated_tx.id}",
+                commitment_hash=settle_commitment,
+                payload=outbox_payload,
+                correlation_id=correlation_id,
+                causation_id=str(updated_tx.id),
+                event_category="DRUNIX_DELIVERY",
+                ordering_key=f"tx:{updated_tx.id}",
+                sequence_number=3,
+            )
 
         await self.audit_repo.create_log(
             AuditLogCreate(
