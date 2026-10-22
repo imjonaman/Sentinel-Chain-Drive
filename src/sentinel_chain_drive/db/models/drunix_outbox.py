@@ -55,6 +55,12 @@ class DrunixEventType(enum.StrEnum):
     FRAUD_ALERT_RAISED = "FRAUD_ALERT_RAISED"
     SHARED_INDICATOR_PUBLISHED = "SHARED_INDICATOR_PUBLISHED"
 
+    # Investigation and recovery events
+    CASE_CREATED = "CASE_CREATED"
+    CASE_STATUS_CHANGED = "CASE_STATUS_CHANGED"
+    RECOVERY_REQUESTED = "RECOVERY_REQUESTED"
+    RECOVERY_STATUS_CHANGED = "RECOVERY_STATUS_CHANGED"
+
 
 class DrunixOutboxEvent(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     """Durable transactional outbox event record.

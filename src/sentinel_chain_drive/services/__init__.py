@@ -3,6 +3,7 @@
 from sentinel_chain_drive.services.agent_service import AgentService
 from sentinel_chain_drive.services.audit_service import AuditService
 from sentinel_chain_drive.services.banking_service import BankingService
+from sentinel_chain_drive.services.case_service import CaseService
 from sentinel_chain_drive.services.policy_engine import DeterministicPolicyEngine
 from sentinel_chain_drive.services.policy_service import PolicyService
 from sentinel_chain_drive.services.privacy_gateway import (
@@ -12,12 +13,14 @@ from sentinel_chain_drive.services.privacy_gateway import (
     PrivacyGatewayService,
     PrivacyQueryRateLimiter,
 )
+from sentinel_chain_drive.services.recovery_service import RecoveryService
 from sentinel_chain_drive.services.system_service import SystemService
 
 __all__ = [
     "AgentService",
     "AuditService",
     "BankingService",
+    "CaseService",
     "DataDisclosurePolicy",
     "DeterministicPolicyEngine",
     "InboundIndicatorValidator",
@@ -25,5 +28,6 @@ __all__ = [
     "PrivacyGatewayPolicyBridge",
     "PrivacyGatewayService",
     "PrivacyQueryRateLimiter",
+    "RecoveryService",
     "SystemService",
 ]

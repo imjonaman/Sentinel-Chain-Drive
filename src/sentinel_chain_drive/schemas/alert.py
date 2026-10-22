@@ -15,6 +15,8 @@ from sentinel_chain_drive.db.models.alert import (
 __all__ = [
     "AlertSeverity",
     "AlertStatus",
+    "AlertTriageRequest",
+    "AlertTriageResponse",
     "DetectorType",
     "FraudAlertListResponse",
     "FraudAlertResponse",
@@ -98,3 +100,48 @@ class MuleChainAnalysisSummary(BaseModel):
     alerts_deduplicated: int
     execution_time_ms: float
     alerts: list[FraudAlertResponse]
+
+
+class AlertTriageRequest(BaseModel):
+    """Payload to triage, assign, escalate, or resolve an alert."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    status: AlertStatus | None = Field(
+        default=None,
+        description="Target status: INVESTIGATING, RESOLVED, FALSE_POSITIVE",
+    )
+    assigned_analyst_id: str | None = Field(
+        default=None,
+        max_length=128,
+        description="Assigned investigator identifier",
+    )
+    escalate_severity: AlertSeverity | None = Field(
+        default=None,
+        description="Escalated severity level",
+    )
+    escalation_reason: str | None = Field(
+        default=None,
+        max_length=500,
+        description="Justification for severity escalation or triage action",
+    )
+    notes: str | None = Field(
+        default=None,
+        max_length=1000,
+        description="Investigation commentary",
+    )
+    create_case: bool = Field(
+        default=False,
+        description="Whether to automatically open an investigation case from this alert",
+    )
+
+
+class AlertTriageResponse(BaseModel):
+    """Response returned upon triaging an alert."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    alert: FraudAlertResponse
+    case_id: uuid.UUID | None = None
+    case_number: str | None = None
+    triage_summary: str

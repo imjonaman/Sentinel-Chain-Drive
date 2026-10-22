@@ -97,12 +97,45 @@ def validate_migrations(sync_url: str) -> dict[str, Any]:
         "drunix_outbox_events",
         "drunix_ledger_submissions",
         "processed_events",
+        "cases",
+        "case_transactions",
+        "case_alerts",
+        "case_accounts",
+        "case_evidence",
+        "case_status_history",
+        "recovery_requests",
+        "recovery_status_history",
     }
     missing_tables = expected_tables - table_names
     if missing_tables:
         raise RuntimeError(f"Missing expected tables after migration: {missing_tables}")
     report["tables_verified"] = list(expected_tables)
     print(f"[MIGRATION_CHECK] Verified all {len(expected_tables)} expected tables exist.")
+
+    # Check unique constraints on cases
+    case_uq_constraints = inspector.get_unique_constraints("cases")
+    case_uq_names = [uq["name"] for uq in case_uq_constraints]
+    assert "uq_cases_case_number" in case_uq_names, (
+        f"Missing uq_cases_case_number in {case_uq_names}"
+    )
+    report["constraints_verified"].append("uq_cases_case_number")
+    assert "uq_cases_institution_source" in case_uq_names, (
+        f"Missing uq_cases_institution_source in {case_uq_names}"
+    )
+    report["constraints_verified"].append("uq_cases_institution_source")
+
+    # Check unique constraints on recovery_requests
+    recovery_uq_constraints = inspector.get_unique_constraints("recovery_requests")
+    recovery_uq_names = [uq["name"] for uq in recovery_uq_constraints]
+    assert "uq_recovery_requests_number" in recovery_uq_names, (
+        f"Missing uq_recovery_requests_number in {recovery_uq_names}"
+    )
+    report["constraints_verified"].append("uq_recovery_requests_number")
+    assert "uq_recovery_requests_institution_idempotency" in recovery_uq_names, (
+        f"Missing uq_recovery_requests_institution_idempotency in {recovery_uq_names}"
+    )
+    report["constraints_verified"].append("uq_recovery_requests_institution_idempotency")
+
 
     # Check unique constraint on policy_evaluations
     unique_constraints = inspector.get_unique_constraints("policy_evaluations")

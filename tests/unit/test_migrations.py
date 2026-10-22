@@ -8,7 +8,7 @@ from sentinel_chain_drive.db.base import Base
 
 
 def test_metadata_tables_match_domain_models() -> None:
-    """Verify that SQLAlchemy Base.metadata contains all 21 registered domain tables."""
+    """Verify that SQLAlchemy Base.metadata contains all 29 registered domain tables."""
     expected_tables = {
         "institutions",
         "accounts",
@@ -31,6 +31,14 @@ def test_metadata_tables_match_domain_models() -> None:
         "drunix_outbox_events",
         "drunix_ledger_submissions",
         "processed_events",
+        "cases",
+        "case_transactions",
+        "case_alerts",
+        "case_accounts",
+        "case_evidence",
+        "case_status_history",
+        "recovery_requests",
+        "recovery_status_history",
     }
     assert set(Base.metadata.tables.keys()) == expected_tables
 
@@ -39,9 +47,9 @@ def test_migration_lifecycle_upgrade_downgrade_reupgrade(tmp_path: Path) -> None
     """Test full migration lifecycle against an isolated database:
 
     1. Base to head upgrade.
-    2. Verification of all 21 tables, indexes, constraints, and foreign keys.
+    2. Verification of all 29 tables, indexes, constraints, and foreign keys.
     3. Downgrade to Phase 3 (20261016_0003).
-    4. Re-upgrade to head (20261021_0008).
+    4. Re-upgrade to head (20261022_0009).
     """
     db_file = tmp_path / "test_migration_lifecycle.db"
     sync_url = f"sqlite:///{db_file}"
@@ -49,11 +57,13 @@ def test_migration_lifecycle_upgrade_downgrade_reupgrade(tmp_path: Path) -> None
     report = validate_migrations(sync_url)
 
     assert report["upgrade_head"] is True
-    assert len(report["tables_verified"]) == 21
+    assert len(report["tables_verified"]) == 29
     assert "capabilities" in report["tables_verified"]
     assert "audit_logs" in report["tables_verified"]
     assert "drunix_outbox_events" in report["tables_verified"]
     assert "drunix_ledger_submissions" in report["tables_verified"]
     assert "processed_events" in report["tables_verified"]
+    assert "cases" in report["tables_verified"]
+    assert "recovery_requests" in report["tables_verified"]
     assert report["downgrade_verified"] is True
     assert report["re_upgrade_verified"] is True

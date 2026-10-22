@@ -112,3 +112,21 @@ class AlertRepository(BaseRepository[FraudAlert]):
         items = items_result.scalars().all()
         total = total_result.scalar_one()
         return items, total
+
+    async def update_triage(
+        self,
+        alert_id: uuid.UUID,
+        institution_id: uuid.UUID,
+        status: AlertStatus | None = None,
+        severity: AlertSeverity | None = None,
+    ) -> FraudAlert | None:
+        """Update lifecycle status or escalated severity of an alert."""
+        alert = await self.get_by_id_scoped(alert_id, institution_id)
+        if alert is None:
+            return None
+        if status is not None:
+            alert.status = status
+        if severity is not None:
+            alert.severity = severity
+        await self.session.flush()
+        return alert

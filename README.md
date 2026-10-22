@@ -6,9 +6,9 @@ Sentinel Chain Drive is an enterprise security and intelligence platform designe
 
 ---
 
-## Current Status: Phase 8 Complete (Audited: 2026-10-21)
+## Current Status: Phase 9 Complete (Audited: 2026-10-22)
 
-Sentinel Chain Drive is developed under an explicit 13-phase architectural roadmap defined in [`build_order.txt`](file:///c:/Users/imjon/OneDrive/Documents/GitHub/Sentinel-Chain-Drive/build_order.txt). As of the latest repository audit on **2026-10-21**, **Phases 1 through 8 are COMPLETE and VERIFIED**, with 225 automated unit and integration tests passing.
+Sentinel Chain Drive is developed under an explicit 13-phase architectural roadmap defined in [`build_order.txt`](file:///c:/Users/imjon/OneDrive/Documents/GitHub/Sentinel-Chain-Drive/build_order.txt). As of the latest repository audit on **2026-10-22**, **Phases 1 through 9 are COMPLETE and VERIFIED**, with 239 automated unit and integration tests passing.
 
 ### Master Phase Status Summary
 
@@ -22,7 +22,7 @@ Sentinel Chain Drive is developed under an explicit 13-phase architectural roadm
 | **6** | **Privacy Gateway & Cross-Institution Intelligence** | **COMPLETE** | Keyed HMAC-SHA256 pseudonymization (`MeshID`) with purpose-binding and epoch rotation, field-level disclosure policies & prohibited-field rejection, shared indicator registry, anti-enumeration rate limiting, policy engine risk bridge. |
 | **7** | **DRUNIX Ledger Integration** | **COMPLETE** | Transactional Outbox pattern (`drunix_outbox_events`), ledger submission tracking (`drunix_ledger_submissions`), resilient asynchronous worker with exponential backoff & jitter, 3-state circuit breaker, `MockDRUNIXAdapter` simulator with 10 deterministic failure modes, stale lock recovery, reconciliation loop, status API, and Alembic migration `20261020_0007`. Live RPC network connection isolated pending external protocol specifications. |
 | **8** | **Event Processing, Reliability & Verification** | **COMPLETE** | Transactional outbox event contracts, strict payload minimization (raw PANs/credentials prohibited), stream ordering per `ordering_key`, consumer idempotency (`processed_events`), controlled replay with tenant boundary enforcement, poison event terminal failure handling, and operational metrics. |
-| **9** | **Investigation, Case Management, & Recovery Orchestration** | **NOT STARTED** | Alert triage API, fraud case management, evidentiary audit dossier compiler, simulated recovery orchestration. |
+| **9** | **Investigation, Case Management, & Recovery Orchestration** | **COMPLETE** | Alert triage API, fraud case management data model and state machine, evidentiary audit dossier compiler with SHA-256 digests and account masking, simulated recovery orchestration with dual-control separation of duties (`approver != requester`), outbox event dispatch. |
 | **10** | **Frontend Dashboard & Operator Experience** | **NOT STARTED** | React 18/19, TypeScript, Vite SPA, interactive Cytoscape.js transaction graph visualization, operator queues, policy console. |
 | **11** | **Security Hardening & Adversarial Validation** | **NOT STARTED** | Standalone adversarial attack test harness, chaos fault injection (database/broker disconnects), automated container scanning. |
 | **12** | **Controlled Pilot Readiness** | **NOT STARTED** | Pilot integration specifications (ISO 20022), disaster recovery runbooks (PITR drills), institutional KMS guides. |
@@ -32,7 +32,7 @@ Sentinel Chain Drive is developed under an explicit 13-phase architectural roadm
 
 ---
 
-## Implemented Architectural Capabilities (Phases 1–8)
+## Implemented Architectural Capabilities (Phases 1–9)
 
 ### Phase 1: Foundation & Core Infrastructure
 - **Enterprise Web Framework:** FastAPI running on Starlette with asynchronous request handling.
@@ -133,6 +133,16 @@ Sentinel Chain Drive is developed under an explicit 13-phase architectural roadm
 - **Terminal Poison Event Handling:** Malformed payloads and events exhausting retry bounds transition into `TERMINAL_FAILURE`, preventing worker lockup or crash loops while triggering operational alerts.
 - **Enhanced Observability Metrics:** Status overview exposing queue metrics, oldest pending event age, total retries, replay operations, stale claims recovered, average processing latency (ms), and backpressure state.
 - **Database Schema Migration (`20261021_0008`):** Alembic migration extending `drunix_outbox_events` with ordering and replay columns (`ordering_key`, `sequence_number`, `replay_count`, `last_replayed_at`, `replayed_by`) and adding the `processed_events` consumer table.
+
+### Phase 9: Investigation, Case Management, and Recovery Orchestration
+- **Relational Case Domain Model & State Machine (`Case`):** Enterprise case entity with unique case numbers (`CASE-YYYY-XXXX`), severity/priority tiers (`LOW`, `MEDIUM`, `HIGH`, `CRITICAL`), category taxonomy, assigned investigator, and strict lifecycle transitions (`OPEN` -> `IN_REVIEW` -> `PENDING_RECOVERY` -> `CLOSED_FRAUD` / `CLOSED_BENIGN` / `REOPENED`). Linked via relational associations to `CaseAlert`, `CaseTransaction`, `CaseAccount`, `CaseEvidence`, and `CaseStatusHistory`.
+- **Alert Triage & Workflow Management:** Dedicated triage endpoints (`GET /api/v1/alerts` and `PATCH /api/v1/alerts/{id}/triage`) allowing analysts to query alerts with multi-column filters, assign triage ownership, dismiss benign alerts, or escalate alert severity with recorded justification and audit logs.
+- **Evidentiary Dossier Compiler:** Generates tamper-evident, exportable case audit packages (`compile_evidence_dossier`) including full case metadata, investigator notes, linked alert metrics, risk scores, attached evidence items with SHA-256 integrity digests, and privacy-preserving transaction subgraphs with masked accounts (`***1234`). Every compiled dossier produces a deterministic canonical JSON SHA-256 hash.
+- **Controlled Simulated Recovery Orchestration:** State-machine driven inter-bank recovery request workflow (`INITIATED` -> `PENDING_APPROVAL` -> `ACKNOWLEDGED` / `SUBMITTED` / `RECALL_REQUESTED` -> `SETTLED` / `REJECTED` / `TIMED_OUT` / `RECONCILED`). Supports action types (`ACCOUNT_FREEZE_REQUEST`, `FUNDS_RECALL`, `TRANSACTION_DISPUTE`, `INFORMATION_REQUEST`).
+- **Dual-Control Separation of Duties:** Strict enforcement prohibiting the requester of a recovery action from approving their own request (`approver_id != requester_id`), failing with `HTTP 403 Forbidden` (`DualControlViolationError`).
+- **Explicit Recovery Guardrails:** All recovery operations are strictly labeled `SIMULATED / PROTOTYPE`. The platform makes zero claims of direct authority or capability to independently freeze external bank accounts or move funds without human bank operator authorization.
+- **Transactional Outbox & Audit Integration:** All case and recovery status changes atomically write immutable audit records (`AuditLog`, `CaseStatusHistory`, `RecoveryStatusHistory`) and publish domain events (`CASE_CREATED`, `CASE_STATUS_CHANGED`, `RECOVERY_REQUESTED`, `RECOVERY_STATUS_CHANGED`) to `drunix_outbox_events` in the same database transaction.
+- **Database Schema Migration (`20261022_0009`):** Alembic migration creating 8 relational tables (`cases`, `case_alerts`, `case_transactions`, `case_accounts`, `case_evidence`, `case_status_history`, `recovery_requests`, `recovery_status_history`) with composite indexing, foreign key constraints, and multi-tenant isolation.
 
 ---
 

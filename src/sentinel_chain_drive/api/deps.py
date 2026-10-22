@@ -7,9 +7,11 @@ from sentinel_chain_drive.db.session import get_db_session
 from sentinel_chain_drive.services.agent_service import AgentService
 from sentinel_chain_drive.services.audit_service import AuditService
 from sentinel_chain_drive.services.banking_service import BankingService
+from sentinel_chain_drive.services.case_service import CaseService
 from sentinel_chain_drive.services.mulechain.mulechain_service import MuleChainService
 from sentinel_chain_drive.services.policy_service import PolicyService
 from sentinel_chain_drive.services.privacy_gateway.service import PrivacyGatewayService
+from sentinel_chain_drive.services.recovery_service import RecoveryService
 from sentinel_chain_drive.services.system_service import SystemService
 
 
@@ -50,13 +52,25 @@ def get_privacy_gateway_service(
     return PrivacyGatewayService(session)
 
 
+def get_case_service(session: AsyncSession = Depends(get_db_session)) -> CaseService:
+    """Dependency provider for CaseService with injected database session."""
+    return CaseService(session)
+
+
+def get_recovery_service(session: AsyncSession = Depends(get_db_session)) -> RecoveryService:
+    """Dependency provider for RecoveryService with injected database session."""
+    return RecoveryService(session)
+
+
 __all__ = [
     "get_agent_service",
     "get_audit_service",
     "get_banking_service",
+    "get_case_service",
     "get_db_session",
     "get_mulechain_service",
     "get_policy_service",
     "get_privacy_gateway_service",
+    "get_recovery_service",
     "get_system_service",
 ]

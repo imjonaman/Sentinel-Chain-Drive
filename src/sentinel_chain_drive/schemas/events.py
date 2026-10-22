@@ -21,6 +21,7 @@ class EventCategory(enum.StrEnum):
     DOMAIN = "DOMAIN"
     FRAUD_INTELLIGENCE = "FRAUD_INTELLIGENCE"
     DRUNIX_DELIVERY = "DRUNIX_DELIVERY"
+    INVESTIGATION = "INVESTIGATION"
 
 
 class StandardEventType(enum.StrEnum):
@@ -41,6 +42,12 @@ class StandardEventType(enum.StrEnum):
     AUTH_ATTESTATION = "AUTH_ATTESTATION"
     FRAUD_INDICATOR = "FRAUD_INDICATOR"
     SETTLEMENT_RECORD = "SETTLEMENT_RECORD"
+
+    # Investigation and Case Management Events
+    CASE_CREATED = "CASE_CREATED"
+    CASE_STATUS_CHANGED = "CASE_STATUS_CHANGED"
+    RECOVERY_REQUESTED = "RECOVERY_REQUESTED"
+    RECOVERY_STATUS_CHANGED = "RECOVERY_STATUS_CHANGED"
 
 
 SUPPORTED_SCHEMA_VERSIONS = {"v1.0"}
@@ -195,6 +202,39 @@ class SharedIndicatorPayload(BaseEventPayload):
     )
 
 
+class CaseLifecyclePayload(BaseEventPayload):
+    """Payload contract for CASE_CREATED and CASE_STATUS_CHANGED events."""
+
+    case_id: str = Field(description="Unique case UUID")
+    case_number: str = Field(description="Unique human-readable case number")
+    institution_id: str = Field(description="Scoped institution ID")
+    status: str = Field(description="Current case status")
+    priority: str = Field(description="Priority level")
+    category: str = Field(description="Case category")
+    source_type: str = Field(description="Originating source type")
+    source_id: str = Field(description="Originating source ID")
+    actor: str = Field(default="system", description="Actor triggering state change")
+    reason: str | None = Field(default=None, description="Reason for transition")
+
+
+class RecoveryLifecyclePayload(BaseEventPayload):
+    """Payload contract for RECOVERY_REQUESTED and RECOVERY_STATUS_CHANGED events."""
+
+    recovery_request_id: str = Field(description="Unique recovery request UUID")
+    request_number: str = Field(description="Unique recovery request number")
+    case_id: str = Field(description="Parent case UUID")
+    transaction_id: str = Field(description="Target transaction UUID")
+    requesting_institution_id: str = Field(description="Requesting institution ID")
+    target_institution_id: str = Field(description="Target institution ID")
+    amount: str = Field(description="Decimal amount string")
+    currency: str = Field(description="ISO currency code")
+    action_type: str = Field(description="Recovery action type")
+    status: str = Field(description="Current recovery status")
+    requester_id: str = Field(description="Investigator requester ID")
+    approver_id: str | None = Field(default=None, description="Supervisor approver ID")
+    is_simulated: bool = Field(default=True, description="Simulation safeguard indicator")
+
+
 # Registry mapping event type and schema version to payload models
 PAYLOAD_MODEL_REGISTRY: dict[tuple[str, str], type[BaseEventPayload]] = {
     (StandardEventType.TRANSACTION_SUBMITTED.value, "v1.0"): TransactionSubmittedPayload,
@@ -205,6 +245,10 @@ PAYLOAD_MODEL_REGISTRY: dict[tuple[str, str], type[BaseEventPayload]] = {
     (StandardEventType.FRAUD_ALERT_RAISED.value, "v1.0"): FraudAlertPayload,
     (StandardEventType.SHARED_INDICATOR_PUBLISHED.value, "v1.0"): SharedIndicatorPayload,
     (StandardEventType.FRAUD_INDICATOR.value, "v1.0"): SharedIndicatorPayload,
+    (StandardEventType.CASE_CREATED.value, "v1.0"): CaseLifecyclePayload,
+    (StandardEventType.CASE_STATUS_CHANGED.value, "v1.0"): CaseLifecyclePayload,
+    (StandardEventType.RECOVERY_REQUESTED.value, "v1.0"): RecoveryLifecyclePayload,
+    (StandardEventType.RECOVERY_STATUS_CHANGED.value, "v1.0"): RecoveryLifecyclePayload,
 }
 
 

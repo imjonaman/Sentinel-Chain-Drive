@@ -992,6 +992,18 @@ Feature 9.4: Simulated Recovery Orchestration
 - Separation of duties enforced between analysts and supervisors.
 - No real-money recovery operations are claimed or exposed.
 
+9.5 Implementation Status & Verification Evidence:
+- Status: COMPLETED AND VERIFIED (Phase 9: Investigation, Case Management, and Recovery Orchestration).
+- Exit Gate Satisfied: Yes.
+- Case Management Domain & State Machine: Implemented relational data model (`Case`, `CaseTransaction`, `CaseAlert`, `CaseAccount`, `CaseEvidence`, `CaseStatusHistory`) in `src/sentinel_chain_drive/db/models/case.py` with strict lifecycle transitions (`OPEN` -> `IN_REVIEW` -> `PENDING_RECOVERY` -> `CLOSED_FRAUD` / `CLOSED_BENIGN` / `REOPENED`). Enforces foreign key constraints, composite unique indexing, and multi-tenant institution isolation (`X-Institution-ID`).
+- Alert Triage Workflow: Implemented `GET /api/v1/alerts` with multi-criteria filtering (severity, detector_type, primary_institution_id, status, pagination) and `PATCH /api/v1/alerts/{alert_id}/triage` to assign, escalate, or dismiss alerts with full audit logging and state synchronization.
+- Evidentiary Audit Package Compilation: Developed `compile_evidence_dossier` service compiling tamper-evident dossiers containing case summary, timestamped analyst notes, linked alerts, risk signals, anonymized transaction subgraphs (with masked account numbers `***1234`), attached evidence items with SHA-256 content digests, and canonical JSON hash verification with export timestamps.
+- Simulated Recovery Orchestration & Dual-Control Separation of Duties: Implemented `RecoveryRequest` and `RecoveryStatusHistory` tracking recovery lifecycle (`INITIATED` -> `PENDING_APPROVAL` -> `ACKNOWLEDGED` / `SUBMITTED` / `RECALL_REQUESTED` -> `SETTLED` / `REJECTED` / `TIMED_OUT` / `RECONCILED`). Strictly enforces separation of duties: `approver_id` cannot match `requester_id` (`DualControlViolationError`). All recovery actions are prominently tagged `SIMULATED / PROTOTYPE` with explicit guardrails stating no direct fund-freezing or debiting authority.
+- Outbox & Audit Integration: State transitions across cases and recovery requests atomically persist audit logs (`CASE_CREATED`, `CASE_STATUS_CHANGED`, `RECOVERY_REQUESTED`, `RECOVERY_STATUS_CHANGED`) and dispatch domain events to `drunix_outbox_events` in the same database transaction.
+- Automated Test Suite: 239/239 tests passing repository-wide (11 new Phase 9 tests covering case CRUD, transitions, access control, note/evidence management, dossier compilation, recovery creation, dual control violations, approval, lifecycle progression, and alert triage; zero regressions across Phases 1–8).
+- Static Checking & Migrations: Ruff check and format 100% clean across 156 files; strict Mypy 100% clean with 0 errors across 156 files; Alembic migration `20261022_0009_case_management_and_recovery.py` verified with full upgrade, downgrade, and re-upgrade lifecycle checks.
+
+
 
 # -------------------------------------------------------------------------------
 # PHASE 10: FRONTEND DASHBOARD AND OPERATOR EXPERIENCE

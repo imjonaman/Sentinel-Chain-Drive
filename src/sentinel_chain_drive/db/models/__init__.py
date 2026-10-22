@@ -24,6 +24,20 @@ from sentinel_chain_drive.db.models.authorization_record import (
     ProcessedNonce,
 )
 from sentinel_chain_drive.db.models.capability import Capability
+from sentinel_chain_drive.db.models.case import (
+    TERMINAL_CASE_STATUSES,
+    VALID_CASE_TRANSITIONS,
+    Case,
+    CaseAccount,
+    CaseAlert,
+    CaseCategory,
+    CaseEvidence,
+    CasePriority,
+    CaseStatus,
+    CaseStatusHistory,
+    CaseTransaction,
+    EvidenceType,
+)
 from sentinel_chain_drive.db.models.drunix_outbox import (
     DrunixEventType,
     DrunixOutboxEvent,
@@ -55,6 +69,14 @@ from sentinel_chain_drive.db.models.privacy_audit import (
     PrivacyOutcome,
 )
 from sentinel_chain_drive.db.models.processed_event import ProcessedEvent
+from sentinel_chain_drive.db.models.recovery import (
+    TERMINAL_RECOVERY_STATUSES,
+    VALID_RECOVERY_TRANSITIONS,
+    RecoveryActionType,
+    RecoveryRequest,
+    RecoveryStatus,
+    RecoveryStatusHistory,
+)
 from sentinel_chain_drive.db.models.shared_indicator import (
     IndicatorSeverity,
     IndicatorStatus,
@@ -70,9 +92,13 @@ from sentinel_chain_drive.db.models.transaction import (
 )
 
 __all__ = [
+    "TERMINAL_CASE_STATUSES",
+    "TERMINAL_RECOVERY_STATUSES",
     "VALID_ACCOUNT_TRANSITIONS",
     "VALID_AGENT_TRANSITIONS",
+    "VALID_CASE_TRANSITIONS",
     "VALID_INSTITUTION_TRANSITIONS",
+    "VALID_RECOVERY_TRANSITIONS",
     "VALID_TRANSACTION_TRANSITIONS",
     "Account",
     "AccountStatus",
@@ -85,12 +111,22 @@ __all__ = [
     "AuditLog",
     "AuthorizationRecord",
     "Capability",
+    "Case",
+    "CaseAccount",
+    "CaseAlert",
+    "CaseCategory",
+    "CaseEvidence",
+    "CasePriority",
+    "CaseStatus",
+    "CaseStatusHistory",
+    "CaseTransaction",
     "DetectorType",
     "DrunixEventType",
     "DrunixLedgerSubmission",
     "DrunixOutboxEvent",
     "DrunixOutboxStatus",
     "DrunixSubmissionStatus",
+    "EvidenceType",
     "FraudAlert",
     "HoldStatus",
     "IndicatorSeverity",
@@ -104,8 +140,12 @@ __all__ = [
     "PrivacyAction",
     "PrivacyAuditLog",
     "PrivacyOutcome",
-    "ProcessedNonce",
     "ProcessedEvent",
+    "ProcessedNonce",
+    "RecoveryActionType",
+    "RecoveryRequest",
+    "RecoveryStatus",
+    "RecoveryStatusHistory",
     "SharedIndicator",
     "SpendingReservation",
     "SpendingReservationStatus",
