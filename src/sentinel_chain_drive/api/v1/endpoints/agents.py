@@ -48,6 +48,8 @@ async def register_agent(
     agent_service: AgentService = Depends(get_agent_service),
 ) -> AgentResponse:
     _check_institution_boundary(institution_id, x_institution_id)
+    if data.institution_id is None:
+        data.institution_id = institution_id
     actor = f"institution_{x_institution_id}" if x_institution_id else "api_client"
     return await agent_service.register_agent(
         institution_id=institution_id,

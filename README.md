@@ -8,7 +8,7 @@ Sentinel Chain Drive is an enterprise security and intelligence platform designe
 
 ## Current Status: Phase 9 Complete (Audited: 2026-10-22)
 
-Sentinel Chain Drive is developed under an explicit 13-phase architectural roadmap defined in [`build_order.txt`](file:///c:/Users/imjon/OneDrive/Documents/GitHub/Sentinel-Chain-Drive/build_order.txt). As of the latest repository audit on **2026-10-22**, **Phases 1 through 9 are COMPLETE and VERIFIED**, with 239 automated unit and integration tests passing.
+Sentinel Chain Drive is developed under an explicit 13-phase architectural roadmap defined in [`build_order.txt`](file:///c:/Users/imjon/OneDrive/Documents/GitHub/Sentinel-Chain-Drive/build_order.txt). As of the latest repository audit on **2026-10-22**, **Phases 1 through 10 are COMPLETE and VERIFIED**, with 239 automated backend tests and 6 Vitest frontend tests passing.
 
 ### Master Phase Status Summary
 
@@ -23,7 +23,7 @@ Sentinel Chain Drive is developed under an explicit 13-phase architectural roadm
 | **7** | **DRUNIX Ledger Integration** | **COMPLETE** | Transactional Outbox pattern (`drunix_outbox_events`), ledger submission tracking (`drunix_ledger_submissions`), resilient asynchronous worker with exponential backoff & jitter, 3-state circuit breaker, `MockDRUNIXAdapter` simulator with 10 deterministic failure modes, stale lock recovery, reconciliation loop, status API, and Alembic migration `20261020_0007`. Live RPC network connection isolated pending external protocol specifications. |
 | **8** | **Event Processing, Reliability & Verification** | **COMPLETE** | Transactional outbox event contracts, strict payload minimization (raw PANs/credentials prohibited), stream ordering per `ordering_key`, consumer idempotency (`processed_events`), controlled replay with tenant boundary enforcement, poison event terminal failure handling, and operational metrics. |
 | **9** | **Investigation, Case Management, & Recovery Orchestration** | **COMPLETE** | Alert triage API, fraud case management data model and state machine, evidentiary audit dossier compiler with SHA-256 digests and account masking, simulated recovery orchestration with dual-control separation of duties (`approver != requester`), outbox event dispatch. |
-| **10** | **Frontend Dashboard & Operator Experience** | **NOT STARTED** | React 18/19, TypeScript, Vite SPA, interactive Cytoscape.js transaction graph visualization, operator queues, policy console. |
+| **10** | **Frontend Dashboard & Operator Experience** | **COMPLETE** | React 18/19, TypeScript, Vite SPA, interactive Cytoscape.js transaction graph visualization, role-aware operator console, AgentID wizard, real-time policy simulator, Vitest suite, and Playwright E2E tests. |
 | **11** | **Security Hardening & Adversarial Validation** | **NOT STARTED** | Standalone adversarial attack test harness, chaos fault injection (database/broker disconnects), automated container scanning. |
 | **12** | **Controlled Pilot Readiness** | **NOT STARTED** | Pilot integration specifications (ISO 20022), disaster recovery runbooks (PITR drills), institutional KMS guides. |
 | **13** | **Production Deployment & Multi-Institution Scale** | **NOT STARTED** | Helm charts, Kubernetes HPA, OpenTelemetry distributed tracing, Prometheus metrics export, SIEM log forwarding, database RLS. |

@@ -1,8 +1,9 @@
 """Capability request and response schemas."""
 
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
+from typing import Any
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -11,13 +12,20 @@ class CapabilityCreate(BaseModel):
     """Schema for assigning authorization capabilities to an agent."""
 
     agent_id: uuid.UUID = Field(description="Target agent ID")
-    name: str = Field(min_length=2, max_length=64, description="Capability identifier/profile name")
+    name: str = Field(
+        default="Default Capability Envelope",
+        min_length=2,
+        max_length=64,
+        description="Capability identifier/profile name",
+    )
     description: str | None = Field(default=None, max_length=256)
     permitted_transaction_types: list[str] = Field(
+        default_factory=lambda: ["DOMESTIC_TRANSFER", "INTERBANK_PAYMENT"],
         min_length=1,
         description="Allowed transaction types (e.g. ['DOMESTIC_TRANSFER'])",
     )
     permitted_currencies: list[str] = Field(
+        default_factory=lambda: ["USD"],
         min_length=1,
         description="Allowed 3-letter currency codes (e.g. ['USD'])",
     )
@@ -54,8 +62,36 @@ class CapabilityCreate(BaseModel):
         description="End operating hour UTC (0-23)",
     )
     valid_from: datetime | None = Field(default=None)
-    valid_until: datetime = Field(description="Expiry date and time for capability")
-    created_by: str = Field(min_length=2, max_length=128, description="Operator identity")
+    valid_until: datetime = Field(
+        default_factory=lambda: datetime.now(UTC) + timedelta(days=365),
+        description="Expiry date and time for capability",
+    )
+    created_by: str = Field(
+        default="Security Administrator",
+        min_length=2,
+        max_length=128,
+        description="Operator identity",
+    )
+
+    @model_validator(mode="before")
+    @classmethod
+    def preprocess_capability_create(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            if not data.get("name"):
+                data["name"] = f"Capability Profile for {str(data.get('agent_id', 'agent'))[:8]}"
+            if not data.get("permitted_transaction_types"):
+                data["permitted_transaction_types"] = ["DOMESTIC_TRANSFER", "INTERBANK_PAYMENT"]
+            if not data.get("permitted_currencies"):
+                data["permitted_currencies"] = ["USD"]
+            if not data.get("created_by"):
+                data["created_by"] = "Security Administrator"
+            if not data.get("valid_until"):
+                data["valid_until"] = datetime.now(UTC) + timedelta(days=365)
+            # Map destination_account_whitelist to allowed_destination_accounts
+            whitelist = data.get("destination_account_whitelist")
+            if not data.get("allowed_destination_accounts") and whitelist:
+                data["allowed_destination_accounts"] = whitelist
+        return data
 
     @model_validator(mode="after")
     def validate_amounts_and_windows(self) -> "CapabilityCreate":

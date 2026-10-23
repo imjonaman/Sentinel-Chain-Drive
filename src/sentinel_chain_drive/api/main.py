@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
 
 from sentinel_chain_drive.api.endpoints import health
 from sentinel_chain_drive.api.v1.api import api_v1_router
@@ -84,6 +85,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     register_exception_handlers(app)
 
     # 6. Route Registration
+    @app.get("/", include_in_schema=False)
+    async def root_redirect() -> RedirectResponse:
+        return RedirectResponse(url="/docs")
+
     app.include_router(health.router)
     app.include_router(api_v1_router)
 

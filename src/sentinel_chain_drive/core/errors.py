@@ -129,7 +129,7 @@ def register_exception_handlers(app: FastAPI) -> None:
         return build_error_response(
             status_code=exc.status_code,
             error_code=error_code,
-            message=str(exc.detail),
+            message=exc.detail,
         )
 
     @app.exception_handler(RequestValidationError)
@@ -146,7 +146,7 @@ def register_exception_handlers(app: FastAPI) -> None:
             )
         logger.info("Request validation failed: %s", sanitized_errors)
         return build_error_response(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             error_code="VALIDATION_ERROR",
             message="Input validation failed for the submitted request.",
             details=sanitized_errors,
